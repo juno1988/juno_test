@@ -11,9 +11,15 @@
 		echo "bb";
 	}
 
+	function c()
+	{
+		echo "c";
+	}
+
 	function d()
 	{
 		echo "d";
 	}
+
 ?>
 
