@@ -10,5 +10,10 @@
 		echo "b";
 		echo "bb";
 	}
+
+	finction c()
+	{
+		echo "ccc";
+	}
 ?>
 
