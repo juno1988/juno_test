@@ -11,9 +11,20 @@
 		echo "bb";
 	}
 
-	finction c()
+	function c()
 	{
-		echo "ccc";
+		echo "c";
 	}
+
+	function d()
+	{
+		echo "d";
+	}
+
+	function testing_brach()
+	{
+		echo "testing";
+	}
+
 ?>
 
