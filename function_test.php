@@ -11,9 +11,9 @@
 		echo "bb";
 	}
 
-	finction c()
+	function d()
 	{
-		echo "ccc";
+		echo "d";
 	}
 ?>
 
