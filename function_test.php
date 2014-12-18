@@ -21,5 +21,10 @@
 		echo "d";
 	}
 
+	function testing_brach()
+	{
+		echo "testing";
+	}
+
 ?>
 
