@@ -7,6 +7,7 @@
 	function b()
 	{	
 		echo "b";
+		echo "bb";
 	}
 ?>
 
