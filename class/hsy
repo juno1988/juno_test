@@ -1,0 +1,613 @@
+<?
+require_once "class_top.php";
+include_once "lib/lib_common.php";
+include_once "jqSuite/jq-config.php";
+include_once "jqSuite/php/jqGrid.php";
+include_once "jqSuite/php/jqGridArray.php";
+
+class class_ER00 extends class_top
+{
+    //////////////////////////////////////
+    function ER00()
+    {
+        global $connect, $template;
+        
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+
+    function ER01()
+    {
+        global $connect, $template;
+        
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+
+
+    function ER02()
+    {
+        global $connect, $template;
+        
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+
+    function ER03()
+    {
+        global $connect, $template;
+        
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+
+
+	function grid()
+	{
+		global $template;
+		$connect = db_connect();
+
+		$grid = new jqGridRender();
+
+		foreach ($_REQUEST as $key=>$value) $$key = trim($value);
+
+        // Lets create the model manually 
+        $Model = array(
+            array(
+                "name"      => "recv_mobile"
+                ,"label"    => "전화번호"
+                ,"width"    => 90  
+                ,"sorttype" => "string"
+                ,"align"    => "center"
+            ),
+            array(
+                "name"      => "crdate"
+                ,"label"    => "일자"
+                ,"width"    => 70  
+                ,"sorttype" => "string"
+                ,"align"    => "center"
+            ),
+            array(
+                "name"      => "crtime"
+                ,"label"    => "최종대화"
+                ,"width"    => 70  
+                ,"sorttype" => "string"
+                ,"align"    => "center"
+            ),
+            array(
+                "name"      => "type"
+                ,"label"    => "타입"
+                ,"width"    => 40  
+                ,"align"    => "center"
+            ),
+            array(
+                "name"      => "msg"
+                ,"label"    => "메시지"
+                ,"width"    => 300  
+                ,"align"    => "left"
+            ),
+     		array(
+                "name"          => "cnt"
+                ,"label"        => "대화"
+                ,"width"        => 50
+                ,"align"        => "center"
+                ,"formatter"    => "integer"
+			),
+     		array(
+                "name"          => "status"
+                ,"label"        => "상태"
+                ,"width"        => 60
+                ,"align"        => "center"
+			),
+     		array(
+                "name"          => "key_string"
+                ,"label"        => "관리번호"
+                ,"width"        => 60
+                ,"align"        => "center"
+			),
+     		array(
+                "name"          => "work"
+                ,"label"        => "작업"
+                ,"width"        => 80
+                ,"align"        => "center"
+			),
+     		array(
+                "name"          => "category"
+                ,"label"        => "카테고리"
+                ,"width"        => 80
+                ,"align"        => "center"
+			),
+     		array(
+                "name"          => "done"
+                ,"label"        => "처리"
+                ,"width"        => 60
+                ,"align"        => "center"
+			),
+        );
+    	
+        // Let the grid create the model 
+        $grid->setColModel($Model);
+                
+                
+        // Set grid option datatype to be local 
+        $grid->setGridOptions(array(
+                 "rownumbers"       => true
+                ,"rownumWidth"      => 35
+                ,"rowList"          => array(10,20,50)
+                ,"datatype"         => "local"
+                ,"cellsubmit"       => "clientArray"
+                ,"width"            => 1080
+                ,"height"           => 500
+                ,"shrinkToFit"      => false
+        )); 
+
+		$data = array();
+
+		$sql = "select sms_send_mobile from ez_config";
+		$config = mysql_fetch_assoc(mysql_query($sql, $connect));
+		$send_mobile = $config[sms_send_mobile];
+
+		if ($rx_only == 'true') {
+			$options = " and msg_type = 'RX'";
+		}
+
+		if ($undone_only == 'true') {
+			$options = " and is_done = 0";
+		}
+
+		if ($category != "") {
+			$options = " and category = '$category'";
+		}
+
+		$sql = "select distinct recv_mobile, max(seq) max_seq, max(crdate) crdate, count(*) cnt
+				  from sms_msg_history 
+				 where date(crdate) between '$start_date' and '$end_date'
+					   ${options}
+				       and recv_mobile != '01038933587'
+				 group by recv_mobile
+				 order by crdate desc";
+		$result = mysql_query($sql, $connect) or die(mysql_error());
+		while ($list = mysql_fetch_assoc($result))
+		{
+			$sql = "select * from sms_msg_history
+					 where recv_mobile = '$list[recv_mobile]'
+					   and seq = '$list[max_seq]'";
+			$list2 = mysql_fetch_assoc(mysql_query($sql, $connect));
+
+			$type = ($list2[msg_type] == "TX") ? "발신" : "수신";
+			$status = ($list2[msg_type] == "RX" && $list2[status] == 0) ? "읽지않음" : "읽음";
+
+			$work = "<a href=\"javascript:chat_window('$send_mobile', '$list[recv_mobile]', '$list2[key_string]');\"><img src=/images15/btn_chat_small.gif align=absmiddle></a>";
+			if ($list2[key_string]) {
+				$work .= " <a href=\"javascript:cs_window('$list[recv_mobile]', '$list2[key_string]');\"><img src=/images15/btn_cs_small.gif align=absmiddle></a>";
+			}
+
+			$list2[msg] = str_replace("\n", " ", $list2[msg]);
+
+			$done = ($list2[is_done] == 0) ? "<a href=\"javascript:set_done('$list[recv_mobile]', '$list2[seq]');\"><b><font color=red>미처리</font></b></a>" : "<a href=\"javascript:set_undone('$list[recv_mobile]', '$list2[seq]');\"><font color=#666666>처리완료</font></a>";
+
+			if (!$list2[category]) {
+				$category = " <a href=\"javascript:ER03('$list[recv_mobile]');\"><img src='/images2/btn_move_folder.gif' align=absmiddle></a>";
+			} else {
+				$category = $list2[category];
+			}
+
+			$data[] = array(
+						"id"            => (++$j),
+						"recv_mobile"   => $list[recv_mobile],
+						"crdate"        => substr($list2[crdate],0,10),
+						"crtime"        => substr($list2[crdate],11,8),
+						"type"          => $type,
+						"msg"   		=> $list2[msg],
+						"cnt"           => $list[cnt],
+						"status"        => $status,
+						"key_string"    => $list2[key_string],
+						"work"          => $work,
+						"category"      => $category,
+						"done"          => $done
+			);
+		}
+
+        //-- javascript
+        $grid->setGridEvent('afterInsertRow', $this->js_afterinsertrow());
+
+        $grid->callGridMethod("#grid", 'addRowData', array("id",$data));
+        $grid->renderGrid('#grid','#pager',true, null, null, true,true);
+
+	}
+
+	function grid_ER02()
+	{
+		global $template;
+		$connect = db_connect();
+
+		$grid = new jqGridRender();
+
+		foreach ($_REQUEST as $key=>$value) $$key = trim($value);
+
+        // Lets create the model manually 
+        $Model = array(
+            array(
+                "name"      => "category"
+                ,"label"    => "카테고리"
+                ,"width"    => 200  
+                ,"sorttype" => "string"
+                ,"align"    => "center"
+            ),
+     		array(
+                "name"          => "work"
+                ,"label"        => "작업"
+                ,"width"        => 80
+                ,"align"        => "center"
+			)
+        );
+    	
+        // Let the grid create the model 
+        $grid->setColModel($Model);
+                
+                
+        // Set grid option datatype to be local 
+        $grid->setGridOptions(array(
+                 "rowList"          => array(10,20,50)
+                ,"datatype"         => "local"
+                ,"cellsubmit"       => "clientArray"
+                ,"width"            => 300
+                ,"height"           => 300
+                ,"shrinkToFit"      => false
+        )); 
+
+		$data = array();
+
+		$sql = "select sms_category from ez_config";
+		$list = mysql_fetch_assoc(mysql_query($sql, $connect));
+
+		$category_list = explode(",", $list[sms_category]);
+		if (strlen($list[sms_category])) {
+			foreach ($category_list as $category)
+			{
+				$btn = "<a href=\"javascript:Del('$category');\"><img src='/images/icon_del.gif' align=absmiddle></a>";
+				$data[] = array(
+						"category"      => $category,
+						"work"          => $btn);
+			}
+		}
+
+        $grid->callGridMethod("#grid", 'addRowData', array("category",$data));
+        $grid->renderGrid('#grid','',true, null, null, true,true);
+
+	}
+
+	function grid_ER03()
+	{
+		global $template;
+		$connect = db_connect();
+
+		$grid = new jqGridRender();
+
+		foreach ($_REQUEST as $key=>$value) $$key = trim($value);
+
+        // Lets create the model manually 
+        $Model = array(
+            array(
+                "name"      => "category"
+                ,"label"    => "카테고리"
+                ,"width"    => 200  
+                ,"sorttype" => "string"
+                ,"align"    => "center"
+            ),
+     		array(
+                "name"          => "work"
+                ,"label"        => "작업"
+                ,"width"        => 80
+                ,"align"        => "center"
+			)
+        );
+    	
+        // Let the grid create the model 
+        $grid->setColModel($Model);
+                
+                
+        // Set grid option datatype to be local 
+        $grid->setGridOptions(array(
+                 "rowList"          => array(10,20,50)
+                ,"datatype"         => "local"
+                ,"cellsubmit"       => "clientArray"
+                ,"width"            => 300
+                ,"height"           => 300
+                ,"shrinkToFit"      => false
+        )); 
+
+		$data = array();
+
+		$sql = "select sms_category from ez_config";
+		$list = mysql_fetch_assoc(mysql_query($sql, $connect));
+
+		$category_list = explode(",", $list[sms_category]);
+		if (strlen($list[sms_category])) {
+			foreach ($category_list as $category)
+			{
+				$btn = "<a href=\"javascript:Move('$category');\"><img src='/images2/btn_move_folder.gif' align=absmiddle></a>";
+				$data[] = array(
+						"category"      => $category,
+						"work"          => $btn);
+			}
+		}
+
+        $grid->callGridMethod("#grid", 'addRowData', array("category",$data));
+        $grid->renderGrid('#grid','',true, null, null, true,true);
+
+	}
+    function js_afterinsertrow()
+    {
+        /* Caution : remove all space */
+        $afterrow = <<<AFTERROW
+            function(rowid, rowdata, rowcontent)
+            {
+                if (rowcontent.status.toString().indexOf("읽지않음") >= 0) {
+					//-- 배경색 변경
+                    $('#'+rowid).css('background','#F2E597');
+
+					//-- 띄워져 있는 채팅 창을 찾아서 갱신해줘야 함
+					//-- 타이틀 변경
+					var recv_mobile = rowcontent.recv_mobile.toString();
+
+					if (childWindowID[recv_mobile] != undefined && childWindowID[recv_mobile] != null) {
+						if (!childWindowID[recv_mobile].closed)
+							(childWindowID[recv_mobile]).notifyMessage();
+					}
+                }
+            }
+AFTERROW;
+        return $afterrow;
+    }
+
+	//-- write cs
+	function write_cs()
+	{
+		global $template;
+		$connect = db_connect();
+
+		foreach ($_REQUEST as $key=>$value) $$key = $value;
+
+		$sql = "select * from sms_msg_history
+				 where recv_mobile = '$recv_mobile'	
+				   and seq = '$seq'";
+		$list = mysql_fetch_assoc(mysql_query($sql, $connect));
+
+		if ($list[key_string]) {
+			//-- csinfo에 내용 저장
+            $ins_sql = "insert csinfo 
+                           set order_seq  = '$list[key_string]',
+                               pack       = '$list[key_string]',
+                               input_date = '$list[crdate]',
+                               input_time = '$list[crdate]',
+                               writer     = '$_SESSION[LOGIN_NAME]',
+                               cs_type    = '31',
+                               cs_reason  = '$list[key_string]',
+                               cs_result  = '0',
+                               content    = '[문자대화 수신] $list[msg] (수신시간:$list[crdate])'";
+            @mysql_query ($ins_sql, $connect);
+
+			$upd_sql = "update sms_msg_history set
+							   write_cs = 1
+						 where recv_mobile = '$recv_mobile'
+						   and seq = '$seq'";
+            @mysql_query ($upd_sql, $connect);
+	
+			echo 1;
+		} else {
+			echo 0;
+		}
+	}
+
+	//-- 미처리->처리완료
+	function set_done()
+	{
+		global $template;
+		$connect = db_connect();
+
+		foreach ($_REQUEST as $key=>$value) $$key = $value;
+
+		$upd_sql = "update sms_msg_history set
+						   status = 1, is_done = 1
+					 where recv_mobile = '$recv_mobile'
+					   and seq = '$seq'";
+		mysql_query($upd_sql, $connect) or die(mysql_error());
+	}
+
+
+	//-- 미처리<-처리완료
+	function set_undone()
+	{
+		global $template;
+		$connect = db_connect();
+
+		foreach ($_REQUEST as $key=>$value) $$key = $value;
+
+		$upd_sql = "update sms_msg_history set
+						   is_done = 0
+					 where recv_mobile = '$recv_mobile'
+					   and seq = '$seq'";
+		mysql_query($upd_sql, $connect) or die(mysql_error());
+	}
+
+	//-- get category
+	function list_category()
+	{
+		global $template;
+		$connect = db_connect();
+
+		foreach ($_REQUEST as $key=>$value) $$key = $value;
+
+		$unread = $this->get_unread_msg_count($connect);
+		$cnt = ($unread) ? $unread : "";
+
+		if ($category == "") $strHTML = "<b>";
+		$strHTML .= "<span class='btn_pack medium'><a href='javascript:reload();'>전체 ${cnt}</a></span>&nbsp;";
+		if ($category == "") $strHTML .= "</b>";
+
+		$sql = "select sms_category from ez_config";
+		$list = mysql_fetch_assoc(mysql_query($sql, $connect));
+
+		if (strlen($list[sms_category])) {
+			$arr = explode(",", $list[sms_category]);
+
+			foreach ($arr as $cate) {
+				$unread = $this->get_unread_msg_count($connect, $cate);
+				$cnt = ($unread) ? $unread : "";
+		
+				if ($category == $cate) $strHTML .= "<b>";
+				$strHTML .= "<span class='btn_pack medium'><a href=\"javascript:reload('$cate');\">$cate ${cnt}</a></span>&nbsp;";
+				if ($category == $cate) $strHTML .= "</b>";
+			}
+		}
+		echo $strHTML;
+	}
+
+	function get_unread_msg_count($connect, $category="")
+	{
+		if ($category) {
+			$options = "and category = '$category'";
+		}
+
+		$sql = "select count(*) cnt from sms_msg_history
+				 where status = 0 and msg_type = 'RX' $options";
+		$list = mysql_fetch_assoc(mysql_query($sql, $connect));
+
+		return $list[cnt];
+	}
+
+	//-- add category
+	function add_category()
+	{
+		global $template;
+		$connect = db_connect();
+
+		foreach ($_REQUEST as $key=>$value) $$key = $value;
+
+		$sql = "select sms_category from ez_config";
+		$list = mysql_fetch_assoc(mysql_query($sql, $connect));
+
+		if (strlen($list[sms_category])) {
+			$arr = explode(",", $list[sms_category]);
+			if (!in_array($category, $arr)) {
+				$sms_category = $list[sms_category] . "," . $category;
+
+				$upd_sql = "update ez_config set sms_category = '$sms_category'";
+				mysql_query($upd_sql, $connect) or die(mysql_error());
+			}
+		} else {
+			$upd_sql = "update ez_config set sms_category = '$category'";
+			mysql_query($upd_sql, $connect) or die(mysql_error());
+		}
+
+	}
+
+	//-- del category
+	function del_category()
+	{
+		global $template;
+		$connect = db_connect();
+
+		foreach ($_REQUEST as $key=>$value) $$key = $value;
+
+		$sql = "select sms_category from ez_config";
+		$list = mysql_fetch_assoc(mysql_query($sql, $connect));
+
+		if (strlen($list[sms_category])) {
+			$arr = explode(",", $list[sms_category]);
+			if (in_array($category, $arr)) {
+				array_splice($arr, array_search($category, $arr),1);
+				$sms_category = implode(",", $arr);
+
+				$upd_sql = "update ez_config set sms_category = '$sms_category'";
+				mysql_query($upd_sql, $connect) or die(mysql_error());
+			}
+		}
+
+		//-- sms_msg_history에 전부 삭제
+		$upd_sql = "update sms_msg_history set category = '' where category = '$category'";
+		mysql_query($upd_sql, $connect) or die(mysql_error());
+	}
+
+	//-- move category
+	function move_category()
+	{
+		global $template;
+		$connect = db_connect();
+
+		foreach ($_REQUEST as $key=>$value) $$key = $value;
+
+		//---------------------------
+		//-- 
+		$upd_sql = "update sms_msg_history set
+						   category = '$category'
+					 where recv_mobile = '$recv_mobile'";
+		debug($upd_sql);
+		mysql_query($upd_sql, $connect) or die(mysql_error());
+	}
+
+	//-- get_macro
+	function get_macro()
+	{
+		global $template;
+		$connect = db_connect();
+
+		foreach ($_REQUEST as $key=>$value) $$key = $value;
+		
+		//--
+		$strHTML = "<ul>";
+		$sql = "select * from sms_config where type = 'macro' and title != '' order by title";
+		$result = mysql_query($sql, $connect) or die(mysql_error());
+		while ($list = mysql_fetch_assoc($result))
+		{
+			$title = substr($list[title], 0, 50);
+			$list[value] = stripslashes($list[value]);
+			$strHTML .= "<li><a href=\"javascript:select_macro('$list[seq]', '$list[title]', '$list[value]')\">$title</a></li>";
+		}
+		$strHTML .= "</ul>";
+
+		echo $strHTML;
+	}
+
+	function macro_add()
+	{
+		global $template;
+		$connect = db_connect();
+
+		foreach ($_REQUEST as $key=>$value) $$key = $value;
+		
+		$ins_sql = "insert into sms_config (crdate, type, title, value)
+				values (now(), 'macro', '$title', '$content')";
+		mysql_query($ins_sql, $connect) or die(mysql_error());
+	}
+
+	function macro_mod()
+	{
+		global $template;
+		$connect = db_connect();
+
+		foreach ($_REQUEST as $key=>$value) $$key = $value;
+		
+		$content = addslashes($content);
+		$upd_sql = "update sms_config set
+						   title = '$title',
+						   value = '$content'
+					 where seq = '$seq'";
+		mysql_query($upd_sql, $connect) or die(mysql_error());
+	}
+
+	function macro_del()
+	{
+		global $template;
+		$connect = db_connect();
+
+		foreach ($_REQUEST as $key=>$value) $$key = $value;
+		
+		$del_sql = "delete from sms_config where seq = '$seq'";
+		mysql_query($del_sql, $connect) or die(mysql_error());
+	}
+}
+
+
+?>

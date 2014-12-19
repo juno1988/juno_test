@@ -1,0 +1,1139 @@
+<?
+////////////////////////////////////////
+//
+// 발주에 관련된 class
+// date: 2005.8.10
+//
+/////////////////////////////////////////
+require_once "class_top.php";
+
+
+class class_D extends class_top
+{
+
+   function get_product_name_option3( $product_id, &$product_name, &$product_option )
+   {
+       global $connect;
+       $query = "select brand, options from products where product_id='$product_id'";
+       $result = mysql_query ( $query );
+       $data = mysql_fetch_array( $result );
+
+       $product_name = $data[brand];
+       $product_option = $data[options];
+   }
+
+
+   function get_product_name_option2( $product_id, &$product_name, &$product_option )
+   {
+       global $connect;
+       $query = "select name,options from products where product_id='$product_id'";
+
+       $result = mysql_query ( $query , $connect);
+       $data = mysql_fetch_array( $result );
+
+	if ( _DOMAIN_ == "yuen" 
+	or _DOMAIN_ == "yeowoowa" )
+		preg_match("/\[?\](.*)/", $data[name], $matches);
+
+        if ( $matches[1] )
+                $product_name = $matches[1];
+        else
+                $product_name = $data[name];
+
+        $product_option = $data[options];
+   }
+
+    function confirm_order()
+    {
+	global $connect;
+
+	$keyword = $_REQUEST["keyword"];
+	$page = $_REQUEST["page"];
+	$start_date = $_REQUEST["start_date"] ? $_REQUEST["start_date"] : strftime('%Y-%m-%d', strtotime('now'));
+	$end_date = $_REQUEST["end_date"] ? $_REQUEST["end_date"] : strftime('%Y-%m-%d', strtotime('now'));
+        $supply_code = $_REQUEST["supply_code"];
+        $shop_id = $_REQUEST["shop_id"];        // 판매처
+
+        //////////////////////////////////////////////
+        // 상태를 2로 변경
+        $query = "update orders set download_date=Now() ";
+
+	$options = " where status in ( 1, 2, 11 )";
+
+	if ($start_date)
+	  $options .= " and collect_date >= '$start_date 00:00:00' ";
+        if ($end_date)
+	  $options .= " and collect_date <= '$end_date 23:59:59' ";
+
+        ///////////////////////////////////////////
+        // supply_code 가 있을 경우
+        if ( $supply_code )
+           $options .= " and supply_id = '$supply_code'";
+
+	$result = mysql_query($query . $options, $connect);
+	return $result;
+
+    }
+
+    ///////////////////////////////////////////////////////////
+    // limit_option 이 0 일 경우는 전체 출력 주로 download받을때 사용
+    // 검색 기준일이 주문일일 경우 : 
+    // 검색 기준일이 송장 입력일
+    function get_order_list( &$total_rows , $limit_option=0, $search_date='order_date', $no_cancel=0)
+    {
+	global $connect, $start_date, $end_date, $pos_confirm, $trans_who, $transonly, $trans_corp;
+
+	$line_per_page = _line_per_page;
+	$keyword = $_REQUEST["keyword"];
+	$page = $_REQUEST["page"];
+
+	//$start_date = $_REQUEST["start_date"] ? $_REQUEST["start_date"] : strftime('%Y-%m-%d', strtotime('now'));
+	//$end_date = $_REQUEST["end_date"] ? $_REQUEST["end_date"] : strftime('%Y-%m-%d', strtotime('now'));
+
+        if ( $_SESSION[LOGIN_LEVEL] )
+            $supply_code = $_REQUEST["supply_code"];// 공급처
+        else
+            $supply_code = $_SESSION["LOGIN_CODE"];// 공급처
+
+        $shop_id = $_REQUEST["shop_id"];        // 판매처
+
+	$query = "select a.*, b.name as supply_name, c.shop_name as shop_name ";
+	$query_cnt = "select count(*) cnt ";
+
+	$options = " from orders a, userinfo b , shopinfo c 
+                    where a.order_id != '' 
+                      and a.supply_id = b.code
+                      and a.shop_id = c.shop_id ";
+
+	if ( $keyword )
+	  $options .= " and (a.order_id = '$keyword' or a.order_name = '$keyword' or a.product_name like '%$keyword%') ";
+
+	if ($start_date)
+	  $options .= " and a." . $search_date . ">= '$start_date 00:00:00' ";
+	if ($end_date)
+	  $options .= " and a." . $search_date . "<= '$end_date 23:59:59' ";
+//echo $options;
+//exit;
+        ///////////////////////////////////////////
+        // shop_id 가 있는 경우
+        if ( $shop_id)
+           $options .= " and a.shop_id= '$shop_id'";
+
+        if ( $trans_corp && $trans_corp != 99)
+           $options .= " and a.trans_corp= '$trans_corp'";
+
+        //////////////////////////////
+        // trans_who가 있는 경우
+        if ( $trans_who )
+           $options .= " and a.trans_who = '$trans_who'";
+
+	// not_trans
+	if ( $transonly )
+	   $options .= " and a.status = 1 ";
+
+        //////////////////////////////////////////
+        // supply_code 가 있을 경우
+	if (_DOMAIN_ == "jyms") $options .= "";
+	else if (_DOMAIN_ == 'ecstorm') $options .= "";
+	else
+	{
+          if ( $supply_code )
+            $options .= " and a.supply_id = '$supply_code'";
+	}
+
+        ///////////////////////////////////////////
+        // status 가 있는 경우
+        // pos 확인 전
+        if ( $pos_confirm == 1 )
+        {
+           $options .= " and a.status ='" ._trans_no .  "'";
+        }
+        // pos 확인 후
+        else if ( $pos_confirm == 2 )
+        {
+           $options .= " and a.status in (" . _trans_confirm . " )";
+        }
+        // 송장 입력 
+        else if ( $pos_confirm == 3 )
+        {
+           $options .= " and a.status in (" ._trans_no . "," . _trans_confirm . " )";
+        }
+ 
+        else
+        {
+           if ( $search_date == "trans_date" && $_REQUEST["status"] == 99 )
+              $options .= " and a.status in (" ._trans_no . "," . _trans_confirm . " )";
+           else
+              if ( $_REQUEST["status"] )
+                 $options .= " and a.status = '". $_REQUEST["status"] ."'";
+        }
+
+        // 취소의 출력여부 check
+        if ( $no_cancel )
+        {
+		$options .= " and a.order_cs not in (" . _cancel_req_b . "," . _cancel_req_a . "," . _cancel_req_confirm . "," . _cancel_com_b . "," . _cancel_com_a. " )";
+
+                if ( $no_cancel == 2 ) // 교환 주문도 나오지 않는다
+                    $options .= " and substring(a.order_id,1,1) <> 'C' ";
+        }
+
+	$options .= " order by a.seq desc ";
+
+        if ( !$limit_option )
+        {
+	   $starter = $page ? ($page-1) * $line_per_page : 0;
+	   $limit = " limit $starter, $line_per_page";
+        }
+
+	////////////////////////////////////////////////// 
+	// total count 가져오기
+	$list = mysql_fetch_array(mysql_query($query_cnt . $options, $connect));
+	$total_rows = $list[cnt];
+
+	$result = mysql_query($query . $options . $limit, $connect);
+	return $result;
+    }
+
+    ////////////////////////////////////////////////////////
+    //  seq를 넘기고 택배사 코드와 송장 번호 받는다
+    function get_trans_info ( $seq, &$trans_corp, &$trans_no )
+    {
+       global $connect;
+       $query = "select trans_corp, trans_no from orders where seq='$seq'";
+       $result = mysql_query ( $query, $connect );
+       
+       $data = mysql_fetch_array ( $result );
+       
+       $trans_corp = $data[trans_corp];
+       $trans_no = $data[trans_no];
+    }
+
+   function get_product_option( $product_id )
+   {
+       global $connect;
+       $query = "select options from products where product_id='$product_id'";
+       $result = mysql_query ( $query , $connect);
+       $data = mysql_fetch_array( $result );
+       return $data[options] ? $data[options] : ""; 
+   }
+
+   function get_product_name( $product_id )
+   {
+       global $connect;
+       $query = "select name from products where product_id='$product_id'";
+       $result = mysql_query ( $query );
+       $data = mysql_fetch_array( $result );
+       return $data[name]; 
+   }
+
+   function get_brand_name( $product_id )
+   {
+       global $connect;
+       $query = "select brand from products where product_id='$product_id'";
+       $result = mysql_query ( $query );
+       $data = mysql_fetch_array( $result );
+       return $data[brand]; 
+   }
+
+   // product_name: 상품명
+   // brand: 사입처 상품명
+   function get_product_name2( $product_id, &$product_name, &$brand )
+   {
+       global $connect;
+       $query = "select name,brand from products where product_id='$product_id'";
+       $result = mysql_query ( $query );
+       $data = mysql_fetch_array( $result );
+       
+       $product_name = $data[name];
+       $brand = $data[brand];
+   }
+
+
+   //////////////////////////////////////////////////////
+   function get_org_id($product_id)
+   {
+	global $connect;
+
+	$sql = "select org_id from products where product_id = '$product_id'";
+	$prod = mysql_fetch_array(mysql_query($sql, $connect));
+	return $prod[org_id];
+   }
+  
+   //////////////////////////////////////////
+   // use D101_move.php
+   function make_trans_who($list, $org_trans_who, &$using)
+   {
+	global $connect;
+
+	$amount = $list[price] * $list[qty];
+	$qty    = $list[qty];
+
+	$stock_manage_use = $_SESSION[STOCK_MANAGE_USE];
+	$trans_who = $org_trans_who;
+	$basename = $_SERVER[REQUEST_URI]. " | ";
+
+	$shop_id = $list[shop_id];
+	// 확장 판매처인경우 기본판매처코드로 변경 (10102 -> 10002)
+	if (($shop_id-10000) > 100) 
+		$shop_id = ($shop_id%100) + 10000;
+
+
+	////////////////////////
+	// type1
+	$sql = "select * from trans_rule where type = 1";
+	$rule = mysql_fetch_array(mysql_query($sql, $connect));
+
+	if ($rule)
+	{
+		if ($org_trans_who == "") $trans_who = $rule[trans_who];
+		debug("$basename TYPE #1 ($trans_who)");
+		$using=1;
+	}
+
+	////////////////////////
+	// type 2
+	$sql = "select * from trans_rule where type = 2 and shop_id = 'all'";
+	$rule = mysql_fetch_array(mysql_query($sql, $connect));
+	if ($rule)
+	{
+		$trans_who = $rule[trans_who];
+		debug("$basename TYPE #2 shop : all ($trans_who)");
+		$using=2;
+	}
+
+	$sql = "select * from trans_rule where type = 2 and shop_id = '$shop_id'";
+	$rule = mysql_fetch_array(mysql_query($sql, $connect));
+	if ($rule)
+	{
+		$trans_who = $rule[trans_who];
+		debug("$basename TYPE #2 shop : $shop_id ($trans_who)");
+		$using=2;
+	}
+
+	////////////////////////
+	// type 3
+	$sql = "select * from trans_rule where type = 3 and shop_id = 'all'";
+	$rule = mysql_fetch_array(mysql_query($sql, $connect));
+	if ($rule)
+	{
+		if ($amount >= $rule[amount]) 
+		{
+			$trans_who = $rule[trans_who];
+			debug("$basename TYPE #3 shop : all $amount > $rule[amount] ($trans_who)");
+			$using=3;
+		}
+	}
+
+	$sql = "select * from trans_rule where type = 3 and shop_id = '$shop_id'";
+	$rule = mysql_fetch_array(mysql_query($sql, $connect));
+	if ($rule)
+	{
+		if ($amount >= $rule[amount]) 
+		{
+			$trans_who = $rule[trans_who];
+			debug("$basename TYPE #3 shop : $shop_id $amount > $rule[amount] ($trans_who)");
+			$using=3;
+		}
+	}
+
+	////////////////////////
+	// type 4
+	$sql = "select * from trans_rule where type = 4 and shop_id = 'all'";
+	$rule = mysql_fetch_array(mysql_query($sql, $connect));
+	if ($rule)
+	{
+		if ($amount < $rule[amount]) 
+		{
+			$trans_who = $rule[trans_who];
+			debug("$basename TYPE #4 shop : all  $amount < $rule[amount] ($trans_who)");
+			$using=4;
+		}
+	}
+
+	$sql = "select * from trans_rule where type = 4 and shop_id = '$shop_id'";
+	$rule = mysql_fetch_array(mysql_query($sql, $connect));
+	if ($rule)
+	{
+		if ($amount < $rule[amount]) 
+		{
+			$trans_who = $rule[trans_who];
+			debug("$basename TYPE #4 shop : $shop_id  $amount < $rule[amount] ($trans_who)");
+			$using=4;
+		}
+	}
+
+	////////////////////////
+	// type 5
+	$sql = "select * from trans_rule where type = 5 order by shop_id";
+	$result = mysql_query($sql, $connect) or die(mysql_error());
+	while ($rule = mysql_fetch_array($result))
+	{
+		if ($rule[shop_id] == $shop_id || $rule[shop_id] == 'all')
+		{
+			if ($stock_manage_use && !is_numeric($list[self_no]))
+		    		$work_id = class_D::get_org_id($list[self_no]);
+			else
+		    		$work_id = $list[self_no];
+		 
+			$ids = explode(",", $rule[product_id]);
+			if ((!$rule[cutoff] &&  in_array($work_id, $ids)) || 
+		   	    ( $rule[cutoff] && !in_array($work_id, $ids))) 
+			{
+		    		if ($amount >= $rule[amount]) 
+		    		{
+					$trans_who = $rule[trans_who];
+					debug("$basename TYPE #5 shop : $shop_id  $amount >= $rule[amount] ($trans_who)");
+					$using=5;
+		    		}
+			}
+		}
+	}
+
+	////////////////////////
+	// type 6
+	$sql = "select * from trans_rule where type = 6 order by shop_id";
+	$result = mysql_query($sql, $connect) or die(mysql_error());
+	while ($rule = mysql_fetch_array($result))
+	{
+		if ($rule[shop_id] == $shop_id || $rule[shop_id] == 'all')
+		{
+			if ($stock_manage_use && !is_numeric($list[self_no]))
+		    		$work_id = class_D::get_org_id($list[self_no]);
+			else
+		    		$work_id = $list[self_no];
+
+			$ids = explode(",", $rule[product_id]);
+			if ((!$rule[cutoff] &&  in_array($work_id, $ids)) || 
+		   	    ( $rule[cutoff] && !in_array($work_id, $ids)))
+			{
+		    		if ($qty >= $rule[amount]) 
+		    		{
+					$trans_who = $rule[trans_who];
+					debug("$basename TYPE #6 shop : $shop_id  $qty >= $rule[amount] ($trans_who)");
+					$using=6;
+				}
+			}
+		}
+	}
+
+
+	////////////////////////
+	// type 7
+	$sql = "select * from trans_rule where type = 7 and shop_id = 'all'";
+	$rule = mysql_fetch_array(mysql_query($sql, $connect));
+	if ($rule)
+	{
+		if ($qty >= $rule[amount]) 
+		{
+			$trans_who = $rule[trans_who];
+			debug("$basename TYPE #7 shop : all $qty > $rule[amount] ($trans_who)");
+			$using=7;
+		}
+	}
+
+	$sql = "select * from trans_rule where type = 7 and shop_id = '$shop_id'";
+	$rule = mysql_fetch_array(mysql_query($sql, $connect));
+	if ($rule)
+	{
+		if ($qty >= $rule[amount]) 
+		{
+			$trans_who = $rule[trans_who];
+			debug("$basename TYPE #7 shop : $shop_id $qty > $rule[amount] ($trans_who)");
+			$using=7;
+		}
+	}
+
+
+	debug("make_trans_who finished : ($old_trans_who) ($trans_who)");
+	return $trans_who;
+   }
+
+   //////////////////////////////////////////////////////////////////////////////
+   // 합포에서 사용하는 선착불 관리 (** 기본선착불과 사이트선착불은 사용안함 **)
+   // use class_DE00.php
+   function make_trans_pack($packno, &$using)
+   {
+	global $connect;
+
+	$stock_manage_use = $_SESSION[STOCK_MANAGE_USE];
+	$basename = $_SERVER[REQUEST_URI]. " | ";
+
+	debug("make_trans_pack: packno($packno)");
+
+	////////////////////////
+	// get amount, qty
+	$sql = "select sum(shop_price*qty) amount, sum(qty) from orders where pack = '$packno'";
+	$list = mysql_fetch_array(mysql_query($sql, $connect));
+	$amount = $list[amount];
+	$qty = $list[qty];
+
+	// get shop_id (여러개인경우에는 처리 불가능한 로직임)
+	$sql = "select distinct shop_id, sum(qty) qty from orders where pack = '$packno' group by shop_id order by qty desc limit 1";
+	$list = mysql_fetch_array(mysql_query($sql, $connect));
+	$shop_id = $list[shop_id];
+	
+
+	////////////////////////
+	// type 3
+	$sql = "select * from trans_rule where type = 3 and shop_id = 'all'";
+	$rule = mysql_fetch_array(mysql_query($sql, $connect));
+	if ($rule)
+	{
+		if ($amount >= $rule[amount]) 
+		{
+			$trans_who = $rule[trans_who];
+			debug("$basename TYPE #3 shop : all $amount > $rule[amount] ($trans_who)");
+			$using=3;
+		}
+	}
+
+	$sql = "select * from trans_rule where type = 3 and shop_id = '$shop_id'";
+	$rule = mysql_fetch_array(mysql_query($sql, $connect));
+	if ($rule)
+	{
+		if ($amount >= $rule[amount]) 
+		{
+			$trans_who = $rule[trans_who];
+			debug("$basename TYPE #3 shop : $shop_id $amount > $rule[amount] ($trans_who)");
+			$using=3;
+		}
+	}
+
+	////////////////////////
+	// type 4
+	$sql = "select * from trans_rule where type = 4 and shop_id = 'all'";
+	$rule = mysql_fetch_array(mysql_query($sql, $connect));
+	if ($rule)
+	{
+		if ($amount < $rule[amount]) 
+		{
+			$trans_who = $rule[trans_who];
+			debug("$basename TYPE #4 shop : all  $amount < $rule[amount] ($trans_who)");
+			$using=4;
+		}
+	}
+
+	$sql = "select * from trans_rule where type = 4 and shop_id = '$shop_id'";
+	$rule = mysql_fetch_array(mysql_query($sql, $connect));
+	if ($rule)
+	{
+		if ($amount < $rule[amount]) 
+		{
+			$trans_who = $rule[trans_who];
+			debug("$basename TYPE #4 shop : $shop_id  $amount < $rule[amount] ($trans_who)");
+			$using=4;
+		}
+	}
+
+	////////////////////////
+	// type 5 (New Logic)
+	$sql = "select * from trans_rule where type = 5 order by shop_id";
+	$result = mysql_query($sql, $connect) or die(mysql_error());
+	while ($rule = mysql_fetch_array($result))
+	{
+		$amount = 0;
+		if ($rule[shop_id] == $shop_id || $rule[shop_id] == 'all')
+		{
+			$ids = explode(",", $rule[product_id]);
+
+			$sql = "select product_id, (shop_price*qty) amount
+				  from orders where pack = '$packno'";
+			$result2 = mysql_query($sql, $connect) or die(mysql_error());
+			while ($list2 = mysql_fetch_array($result2))
+			{
+				if ($stock_manage_use && !is_numeric($list2[product_id]))
+					$work_id = class_D::get_org_id($list2[product_id]);
+				else
+					$work_id = $list2[product_id];
+
+				if ((!$rule[cutoff] &&  in_array($work_id, $ids)) || 
+				    ( $rule[cutoff] && !in_array($work_id, $ids))) 
+				{
+					$amount +=  $list2[amount];
+				}
+
+		    		if ($amount >= $rule[amount]) 
+		    		{
+					$trans_who = $rule[trans_who];
+					debug("$basename TYPE #5 shop : $shop_id  $amount >= $rule[amount] ($trans_who)");
+					$using=5;
+		    		}
+				if ($trans_who == "선불") break;
+			}
+		}
+		if ($trans_who == "선불") break;
+	}
+
+
+	////////////////////////
+	// type 6 (New Logic)
+	$sql = "select * from trans_rule where type = 6 order by shop_id";
+	$result = mysql_query($sql, $connect) or die(mysql_error());
+	while ($rule = mysql_fetch_array($result))
+	{
+		$qty = 0;
+		if ($rule[shop_id] == $shop_id || $rule[shop_id] == 'all')
+		{
+			$ids = explode(",", $rule[product_id]);
+
+			$sql = "select product_id, qty
+				  from orders where pack = '$packno'";
+			$result2 = mysql_query($sql, $connect) or die(mysql_error());
+			while ($list2 = mysql_fetch_array($result2))
+			{
+				if ($stock_manage_use && !is_numeric($list2[product_id]))
+					$work_id = class_D::get_org_id($list2[product_id]);
+				else
+					$work_id = $list2[product_id];
+
+				if ((!$rule[cutoff] &&  in_array($work_id, $ids)) || 
+				    ( $rule[cutoff] && !in_array($work_id, $ids))) 
+				{
+					$qty +=  $list2[qty];
+				}
+
+		    		if ($qty >= $rule[amount]) 
+		    		{
+					$trans_who = $rule[trans_who];
+					debug("$basename TYPE #6 shop : $shop_id  $qty >= $rule[amount] ($trans_who)");
+					$using=6;
+					if ($trans_who == "선불") break;
+		    		}
+			}
+		}
+		if ($trans_who == "선불") break;
+	}
+
+
+	////////////////////////
+	// type 7
+	$sql = "select * from trans_rule where type = 7 and shop_id = 'all'";
+	$rule = mysql_fetch_array(mysql_query($sql, $connect));
+	if ($rule)
+	{
+		if ($qty >= $rule[amount]) 
+		{
+			$trans_who = $rule[trans_who];
+			debug("$basename TYPE #7 shop : all $qty > $rule[amount] ($trans_who)");
+			$using=7;
+		}
+	}
+
+	$sql = "select * from trans_rule where type = 7 and shop_id = '$shop_id'";
+	$rule = mysql_fetch_array(mysql_query($sql, $connect));
+	if ($rule)
+	{
+		if ($qty >= $rule[amount]) 
+		{
+			$trans_who = $rule[trans_who];
+			debug("$basename TYPE #7 shop : $shop_id $qty > $rule[amount] ($trans_who)");
+			$using=7;
+		}
+	}
+
+	debug("make_trans_pack: After trans_who = ($trans_who) using = ($using)");
+
+	return $trans_who;
+   }
+
+
+   //////////////////////////////////////////
+   // bubigirl 사용중지시 삭제해야 함
+   //////////////////////////////////////////
+   function get_bubilist_array($shop_xp, &$bigsize_list, &$nightgown_list, &$allinone_list, &$normal_list)
+   {
+	$bigsize_list = array();
+	$normal_list = array();
+	$nightgown_list = array();
+	$allinone_list = array();
+
+	if ($shop_xp == _GMARKET_)
+	{
+		$bigsize_list = array ("118290864" , "120673221" , "121306067");
+		$normal_list = array ("120506602" , "120507564" , "120613655" , "120613857" , "120672910" , "121289236" , "121477291");
+		$nightgown_list = array ("118432307" , "119175772" , "119495890" , "119907714" , "121362814" , "121750467");
+		$allinone_list = array ("119964738" , "120612480" , "120612225");
+	}
+	else if ($shop_xp == _CYMARKET_)
+	{
+		$bigsize_list = array ("5335220");
+		$normal_list = array ("4335323" , "4642475" , "5524452");
+		$nightgown_list = array ("4704167" , "4626130" , "5799360" , "5162632" , "5466798" , "4617914" , "4642447");
+		$allinone_list = array ("6291288" , "5987917");
+	}
+	else if ($shop_xp == _AUCTION_)
+	{
+		$bigsize_list = array ("A098027896");
+		$nightgown_list = array ("A097095885" , "A100220715" , "A107532447");
+		$allinone_list = array ("A101976828");
+		$normal_list = array ("A100609359" , "A105138168");
+	}
+	else if ($shop_xp == _MPLE_)
+	{
+		$bigsize_list = array ("1036105590");
+		$nightgown_list = array ("1038567997" , "1036105005");
+		$normal_list = array ("1035661418");
+	}
+	else if ($shop_xp == _INTERPARK_OPEN_)
+	{
+		$allinone_list = array ("29409178" , "29410298" , "29418642");
+		$normal_list = array ("29082879" , "29280323");
+	}
+	else if ($shop_xp == _ONKET_)
+	{
+		$normal_list = array ("200046276139");
+		$nightgown_list = array ("200049652507");
+		$allinone_list = array ("200049317232");
+	}
+   }
+
+   function gift_single_bubigirl($list, $shop_xp, &$trans_who)
+   {
+	class_D::get_bubilist_array($shop_xp, &$bigsize_list, &$nightgown_list, &$allinone_list, &$normal_list);
+
+        /////////////////////////////////////////////////
+        if (@in_array($list[product_no], $bigsize_list))
+        {
+                $gift = class_D::bubigirl_gift_bigsize($list[qty]);
+                $m_trans_who = class_D::bubigirl_trans_bigsize($list[qty]);
+                if ($m_trans_who) $trans_who = $m_trans_who;
+        }
+        else if (@in_array($list[product_no], $nightgown_list))
+        {
+                $gift = class_D::bubigirl_gift_nightgown($list[qty]);
+                $m_trans_who = class_D::bubigirl_trans_nightgown($list[qty]);
+                if ($m_trans_who) $trans_who = $m_trans_who;
+        }
+        else if (@in_array($list[product_no], $nightgown2_list))
+        {
+                $gift = class_D::bubigirl_gift_nightgown2($list[qty]);
+                $m_trans_who = class_D::bubigirl_trans_nightgown2($list[qty]);
+                if ($m_trans_who) $trans_who = $m_trans_who;
+        }
+        else if (@in_array($list[product_no], $allinone_list))
+        {
+                $gift = class_D::bubigirl_gift_allinone($list[qty]);
+        }
+        else
+                $gift = class_D::bubigirl_gift_normal($list[qty]);
+
+	return $gift;
+   }
+
+
+   function gift_pack_bubigirl($packno, $shop_xp)
+   {
+	global $connect;
+
+	$gift = "";
+
+	class_D::get_bubilist_array($shop_xp, &$bigsize_list, &$nightgown_list, &$allinone_list, &$normal_list);
+
+	$normal_qty = 0;
+	$bigsize_qty = 0;
+	$nightgown_qty = 0;
+	$allinone_qty = 0;
+	$nightgown2_qty = 0;
+
+	$sql = "select shop_product_id, qty
+	    from orders
+	   where pack = '$packno'";
+	$result4 = mysql_query($sql, $connect) or die(mysql_error());
+	while ($list4 = mysql_fetch_array($result4))
+	{
+	    if (in_array($list4[shop_product_id], $bigsize_list))
+		$bigsize_qty += $list4[qty];
+	    else if (in_array($list4[shop_product_id], $nightgown_list))
+		$nightgown_qty += $list4[qty];
+	    else if (in_array($list4[shop_product_id], $allinone_list))
+		$allinone_qty += $list4[qty];
+	    else if (in_array($list4[shop_product_id], $normal_list))
+		$normal_qty += $list4[qty];
+	}
+
+	//debug("nor : $normal_qty, big: $bigsize_qty, nig: $nightgown_qty, nig2 : $nightgown2_qty, spe : $allinone_qty");
+
+	if ($normal_qty >= 1)
+	{
+		$gift .= class_D::bubigirl_gift_normal($normal_qty);
+		$m_trans_who = class_D::bubigirl_trans_normal($normal_qty);
+		if ($m_trans_who) $trans_who = $m_trans_who;
+	}
+
+	if ($allinone_qty >= 1)
+	{
+		$gift .= class_D::bubigirl_gift_allinone($allinone_qty);
+		$m_trans_who = class_D::bubigirl_trans_allinone($allinone_qty);
+		if ($m_trans_who) $trans_who = $m_trans_who;
+	}
+
+	if ($nightgown_qty >= 1)
+	{
+		$gift .= class_D::bubigirl_gift_nightgown($nightgown_qty);
+		$m_trans_who = class_D::bubigirl_trans_nightgown($nightgown_qty);
+		if ($m_trans_who) $trans_who = $m_trans_who;
+	}
+
+	if ($bigsize_qty >= 2)
+	{
+		$gift .= class_D::bubigirl_gift_bigsize($bigsize_qty);
+		$m_trans_who = class_D::bubigirl_trans_bigsize($bigsize_qty);
+		if ($m_trans_who) $trans_who = $m_trans_who;
+	}
+
+	if ( $trans_who == "선불") $trans_update = true;
+
+	if ($gift != "")
+	{
+		$upd_sql = "update orders set gift = '$gift' where pack = '$packno' and seq = '$packno'";
+		debug($upd_sql);
+		mysql_query($upd_sql, $connect) or die(mysql_error());
+	}
+   }
+
+
+  //////////////////////////////////////
+  function bubigirl_gift_normal($qty)
+  {
+	switch ($qty)
+	{
+	    case  3 :	$gift = "[세]"; break;
+	    case  4 :	$gift = "[세,쿠]"; break;
+	    case  5 :	$gift = "[세,쿠]"; break;
+	    case  6 :	$gift = "[세,쿠,잠]"; break;
+	    case  7 :	$gift = "[세,쿠,잠,부]"; break;
+	    case  8 :	$gift = "[세,쿠,잠,부]"; break;
+	    case  9 :	$gift = "[세,쿠,잠,부,공]"; break;
+	    default :	$gift = ""; break;
+	}
+	if ($qty >= 10)	$gift = "[세,쿠,잠,부,공,특]";
+
+	return $gift;
+  }
+
+  //////////////////////////////////////
+  function bubigirl_trans_normal($qty)
+  {
+	if ($qty >= 1) $trans_who = "선불";
+	return $trans_who;
+  }
+
+  function bubigirl_gift_allinone($qty)
+  {
+	switch ($qty)
+	{
+	    case  2 :	$gift = "[쿠]"; break;
+	    case  3 :	$gift = "[쿠,공]"; break;
+	    case  4 :	$gift = "[쿠,공,부]"; break;
+	    default :	$gift = ""; break;
+	}
+	if ($qty >= 5)	$gift = "[쿠,공,부,특]";
+
+	return $gift;
+  }
+
+  function bubigirl_trans_allinone($qty)
+  {
+	if ($qty >= 1) $trans_who = "선불";
+	return $trans_who;
+  }
+
+  /////////////////////////////////////
+  function bubigirl_gift_bigsize($qty)
+  {
+	switch ($qty)
+	{
+	    case  3 :	$gift = "[칼,쿠]"; break;
+	    case  4 :	$gift = "[칼,쿠,P]"; break;
+	    case  5 :	$gift = "[세,쿠]"; break;
+	    case  6 :	$gift = "[세,쿠,잠]"; break;
+	    case  7 :	$gift = "[세,쿠,잠,부]"; break;
+	    case  8 :	$gift = "[세,쿠,잠,부]"; break;
+	    case  9 :	$gift = "[세,쿠,잠,부,공]"; break;
+	    default :	$gift = ""; break;
+	}
+	if ($qty >= 10)	$gift = "[세,쿠,잠,부,공,특]";
+	return $gift;
+  }
+
+
+  function bubigirl_trans_bigsize($qty)
+  {
+	if ($qty >= 2) $trans_who = "선불";
+	return $trans_who;
+  }
+
+
+  function bubigirl_gift_nightgown($qty)
+  {
+	switch ($qty)
+	{
+	    case  3 :	$gift = "[쿠]"; break;
+	    case  4 :	$gift = "[쿠,공]"; break;
+	    case  5 :	$gift = "[쿠,공]"; break;
+	    case  6 :	$gift = "[쿠,공,부]"; break;
+	    case  7 :	$gift = "[쿠,공,부]"; break;
+	    default :	$gift = ""; break;
+	}
+	if ($qty >= 8)	$gift = "[쿠,공,부,특]";
+	return $gift;
+  }
+
+
+  function bubigirl_trans_nightgown($qty)
+  {
+	if ($qty >= 2) $trans_who = "선불";
+	return $trans_who;
+  }
+
+
+
+
+
+
+   //////////////////////////////////////////
+   // purdream 사용중지시 삭제해야 함
+   //////////////////////////////////////////
+   function make_trans_pack_purdream($packno)
+   {
+	global $connect; 
+
+	  $nut_amount = 0;	// 견과류
+	  $rice_amount = 0;	// 쌀류
+
+	  $total_qty2 = 0;
+	  $total_qty3 = 0;
+	  $total_qty4 = 0;
+	  $total_qty5 = 0;
+	  $total_qty6 = 0;
+	  $total_qty7 = 0;
+	  $total_qty8 = 0;
+	  $total_qty9 = 0;
+	  $total_amount10 = 0;
+
+	  $nut_list = array("00250", "00314", "00318", "00323", "00439", "00470", "00471"); // 견과류
+	  $rice_list = array("00236", "00237", "00240", "00248", "00267"); // 쌀류
+	  $arr_list2 = array ("00003", "00005", "00031", "00032", "00080", "00275", "00306", "00333");       
+	  $arr_list3 = array ("00009", "00260", "00043");	// 8개이상 선불
+	  $arr_list4 = array ("00008");
+	  $arr_list5 = array ("00029", "00030", "00263");
+	  $arr_list6 = array ("00253", "00269");
+	  $arr_list7 = array ("00034", "00444");
+	  $arr_list8 = array ("00385");
+	  $arr_list8 = array ("00468");
+
+	  $sql = "select product_id, qty, (shop_price*qty) amount 
+		    from orders where pack = '$packno'";
+	  $result4 = mysql_query($sql, $connect) or die(mysql_error());
+
+	  while ($list4 = mysql_fetch_array($result4))
+	  {
+	    if (substr($list4[product_id],0,1) == 'S')
+	    {
+		$sql = "select org_id from products where product_id = '$list4[product_id]'";
+		$list5 = mysql_fetch_array(mysql_query($sql, $connect));
+		$product_id = $list5[org_id];
+	    }
+	    else
+		$product_id = $list4[product_id];
+
+	    // 견과류 
+	    if ($product_id >= "00010" && $product_id <= "00023")
+		$nut_amount += $list4[amount];
+
+	    // 쌀류
+	    if ($product_id >= "00048" && $product_id <= "00076")
+		$rice_amount += $list4[amount];
+
+	    // 견과류
+	    if (in_array($product_id, $nut_list))
+		$nut_amount += $list4[amount];
+
+	    // 쌀류
+	    if (in_array($product_id, $rice_list))
+		$rice_amount += $list4[amount];
+
+
+	    if (in_array($product_id, $arr_list2))
+		$total_qty2 += $list4[qty];
+
+	    if (in_array($product_id, $arr_list3))
+		$total_qty3 += $list4[qty];
+
+	    if (in_array($product_id, $arr_list4))
+		$total_qty4 += $list4[qty];
+
+	    if (in_array($product_id, $arr_list5))
+		$total_qty5 += $list4[qty];
+
+	    if (in_array($product_id, $arr_list6))
+		$total_qty6 += $list4[qty];
+
+	    if (in_array($product_id, $arr_list7))
+		$total_qty7 += $list4[qty];
+
+	    if (in_array($product_id, $arr_list8))
+		$total_qty8 += $list4[qty];
+
+	    if (in_array($product_id, $arr_list9))
+		$total_qty9 += $list4[qty];
+
+	    if ($product_id >= "00510" && $product_id <= "00562")
+		$total_amount10 += $list4[amount];
+
+	    if ($product_id == "00618") 
+		$total_amount10 += $list4[amount];
+	  }
+
+	  if ( $nut_amount >= 40000)
+	  {
+	    $trans_who = "선불";
+	    $trans_update = true;
+	  }
+	  if ( $rice_amount >= 40000)
+	  {
+	    $trans_who = "선불";
+	    $trans_update = true;
+	  }
+
+	  if ( $total_qty2 >= 10)
+	  {
+	    $trans_who = "선불";
+	    $trans_update = true;
+	  }
+	  if ( $total_qty3 >= 8)
+	  {
+	    $trans_who = "선불";
+	    $trans_update = true;
+	  }
+	  if ( $total_qty4 >= 6)
+	  {
+	    $trans_who = "선불";
+	    $trans_update = true;
+	  }
+	  if ( $total_qty9 >= 5)
+	  {
+	    $trans_who = "선불";
+	    $trans_update = true;
+	  }
+	  if ( $total_qty5 >= 4)
+	  {
+	    $trans_who = "선불";
+	    $trans_update = true;
+	  }
+	  if ( $total_qty6 >= 3)
+	  {
+	    $trans_who = "선불";
+	    $trans_update = true;
+	  }
+	  if ( $total_qty7 >= 2)
+	  {
+	    $trans_who = "선불";
+	    $trans_update = true;
+	  }
+	  if ( $total_qty8 >= 20)
+	  {
+	    $trans_who = "선불";
+	    $trans_update = true;
+	  }
+
+	  if ( $total_amount10 >= 40000)
+	  {
+	    $trans_who = "선불";
+	    $trans_update = true;
+	  }
+	return $trans_who;
+   }
+
+   function make_trans_purdream($list, $amount)
+   {
+	global $connect;
+
+        // 옵션별 발주임..
+        $product_id = $list[self_no];
+        if ( substr($list[self_no],0,1) == "S" )
+        {
+          $sql = "select org_id from products where product_id = '$list[self_no]'";
+          $list4 = mysql_fetch_array(mysql_query($sql, $connect));
+          $product_id = $list4[org_id];
+        }
+
+        if ($product_id == "00007") $trans_who = "선불";
+        if ($product_id == "00076") $trans_who = "선불";
+        if ($product_id == "00077") $trans_who = "선불";
+
+
+        if ($product_id >= "00510" && $product_id <= "00562")
+	{
+	    if ($amount >= 40000) $trans_who = "선불";
+	}
+
+
+        if ($amount >= 40000)
+        {
+          if ($product_id >= "00010" && $product_id <= "00023")
+          {
+            $trans_who = "선불";
+          }
+          if ($product_id >= "00048" && $product_id <= "00076")
+          {
+            $trans_who = "선불";
+          }
+          $arr_list = array("00250", "00236", "00237", "00240", "00248", "00267", "00314", "00318" , "00323", "00439", "00470", "00471");
+          if (in_array($product_id, $arr_list))
+                $trans_who = "선불";
+
+	  if ($product_id == "00618") 
+		$trans_who = "선불";
+        }
+
+        if ($list[qty] >= 20)
+        {
+          $arrs = array ("00385");
+          if (in_array($product_id, $arrs)) $trans_who = "선불";
+        }
+        if ($list[qty] >= 10)
+        {
+          $arrs = array ("00003", "00005", "00031", "00032", "00080", "00275", "00306", "00333");
+          if (in_array($product_id, $arrs)) $trans_who = "선불";
+        }
+
+        if ($list[qty] >= 8)
+        {
+          $arrs = array ("00009", "00260", "00042");
+          if (in_array($product_id, $arrs)) $trans_who = "선불";
+        }
+
+        if ($list[qty] >= 6)
+        {
+          $arrs = array ("00008");
+          if (in_array($product_id, $arrs)) $trans_who = "선불";
+        }
+
+        if ($list[qty] >= 5)
+        {
+          $arrs = array ("00468");
+          if (in_array($product_id, $arrs)) $trans_who = "선불";
+        }
+
+        if ($list[qty] >= 4)
+        {
+          $arrs = array ("00029", "00030", "00263");
+          if (in_array($product_id, $arrs)) $trans_who = "선불";
+        }
+        if ($list[qty] >= 3)
+        {
+          $arrs = array ("00253", "00269");
+          if (in_array($product_id, $arrs)) $trans_who = "선불";
+        }
+        if ($list[qty] >= 2)
+        {
+          $arrs = array ("00034", "00444");
+          if (in_array($product_id, $arrs)) $trans_who = "선불";
+        }
+
+	return $trans_who;
+   }
+
+}
+?>

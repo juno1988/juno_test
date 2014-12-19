@@ -1,0 +1,320 @@
+<?
+require_once "class_top.php";
+require_once "class_C.php";
+require_once "class_D.php";
+require_once "class_vendor.php";
+
+//////////////////////////////////////////////
+class class_I900 extends class_top
+{
+  //////////////////////////////////////////////////////
+  // 상품 리스트 
+  function I900()
+  {
+    global $template;
+    global $connect;
+
+    $master_code = substr( $template, 0,1);
+    include "template/" . $master_code ."/" . $template . ".htm";
+  }
+
+  function download()
+  {
+    $act = $_REQUEST[act];
+    if ($act == "orderlist")
+    {
+	// 1. 발주요청 엑셀파일 다운로드
+	$this->orderlist();
+    }
+    else if ($act == "productlist")
+    {
+	// 2. 빈 엑셀포맷 다운로드
+	$this->productlist();
+    }
+  }
+
+  /////////////////////////////////////
+  function orderlist()
+  {
+    global $template;
+    global $connect;
+
+    // 기준조건 (1:발주일기준 / 2:배송일기준)
+    $date_type = $_REQUEST[date_type];	
+    $end_date = $_REQUEST[start_date];
+
+    require_once 'Spreadsheet/Excel/Writer.php';
+    $xls_name = $end_date."-발주요청재고.xls";
+
+    // Creating a workbook
+    $workbook = new Spreadsheet_Excel_Writer();
+
+
+    // Creating a worksheet
+    $worksheet =& $workbook->addWorksheet('재고목록');
+
+    $worksheet->setColumn(0, 0, 10);
+    $worksheet->setColumn(1, 1, 10);
+    $worksheet->setColumn(2, 2, 30);
+    $worksheet->setColumn(3, 3, 30);
+    $worksheet->setColumn(4, 4, 10);
+    $worksheet->setColumn(5, 5, 15);
+    $worksheet->setColumn(6, 7, 15);
+    $format_bold =& $workbook->addFormat();
+    $format_bold->setAlign('center');
+    // 나중에 더 공부해서...
+    // $format_bold->setBgColor(36);
+    // $format_bold->setPattern(1);
+    $format_bold->setBold();
+    ////////////////////////////////////////////////////////////////
+    // 1. 해당기준일의 주문을 모두 가져와 상품코드별로 SUM을 한다.
+    // 2. 해당상품코드를 ez_jaegolist에서 찾아서 정보를 반영한다.
+
+    $header_items = array ("공급처", "상품코드", "상품명", "옵션", "현재재고", "발주요청수량");
+    $col = 0;
+    foreach ($header_items as $item)
+    {
+	$worksheet->write(0, $col, $item, $format_bold);
+	$col++;
+    }
+
+
+    ///////////////////////////////////////
+    $row = 1;
+    $sql = "select * from ez_jaegolist order by product_id";
+    $result = mysql_query($sql, $connect) or die(mysql_error());
+    while ($list = mysql_fetch_array($result))
+    {
+	$base_date = $list[start_date];
+	///////////////////////////////////////
+	if ($date_type == 1)  # 발주일 기준
+	{
+	  $query_option = " and collect_date >= '$base_date' 
+			  and collect_date <= '$end_date'";
+	}
+	else if ($date_type == 2)  # 배송일 기준(POS출고확인일)
+	{
+	  $query_option = " and status = 8
+		  and substring(trans_date_pos,1,10) >= '$base_date' 
+		  and substring(trans_date_pos,1,10) <= '$end_date'";
+	}
+
+	///////////////////////////////////////
+	$sql = "select * from products where org_id = '$list[product_id]' order by product_id";
+	$sub_result = mysql_query($sql, $connect) or die(mysql_error());
+	$sub_rows = mysql_num_rows($sub_result);
+
+	//////////////////////////////////////////////
+	$sql = "select * from products where product_id = '$list[product_id]'";
+	$list1 = mysql_fetch_array(mysql_query($sql, $connect));
+	$org_id = $list1[product_id];
+
+	$supply_name = class_vendor::get_name($list1[supply_code]);
+	$worksheet->write($row, 0, $supply_name);
+	$worksheet->writeString($row, 1, $list1[product_id]);
+	$worksheet->write($row, 2, $list1[name]);
+
+	if (!$sub_rows)
+	{
+	  $sql = "select sum(qty) qty from orders
+		where product_id = '$list1[product_id]'
+		  $query_option
+		";
+	  $list2 = mysql_fetch_array(mysql_query($sql, $connect));
+	  $worksheet->write($row, 3, "원본");
+	  $worksheet->write($row, 4, $this->get_jaego($org_id, $list1[product_id], $end_date, $date_type));
+	  $worksheet->write($row, 5, $list2[qty]);
+	}
+	$row++;
+
+
+	////////////////////////////////////////////////
+	while ($sub_list = mysql_fetch_array($sub_result))
+	{
+	  ///////////////////////////////////////
+	  $sql = "select sum(qty) qty from orders
+		where product_id = '$sub_list[product_id]'
+		  $query_option
+		";
+	  $list2 = mysql_fetch_array(mysql_query($sql, $connect));
+
+	  $worksheet->write($row, 0, $supply_name);
+	  $worksheet->writeString($row, 1, $sub_list[product_id]);
+	  $worksheet->write($row, 2, $sub_list[name]);
+	  $worksheet->write($row, 3, $sub_list[options]);
+	  $worksheet->write($row, 4, $this->get_jaego($org_id, $sub_list[product_id], $end_date, $date_type) );
+	  $worksheet->write($row, 5, $list2[qty]);
+	  $row++;
+	}
+    }
+  
+    ////////////////////////////////////
+    // Let's send the file
+    // sending HTTP headers
+    $workbook->send($xls_name);
+
+    $workbook->close();
+  }
+
+  function get_jaego($org_id, $product_id, $end_date, $date_type = 1)
+  {
+	global $connect;
+
+	////////////////////////////////////////
+	$sql = "select * from ez_jaegolist where product_id = '$org_id'";
+	$list = mysql_fetch_array(mysql_query($sql, $connect));
+	$start_date = $list[start_date];
+
+	////////////////////////////////////////
+	// 입고량 합계
+	// $sql = "select sum(qty) in_qty from ez_jaego_inout where product_id = '$product_id' and type = 1 and start_date >= '$start_date'";
+	$sql = "select sum(qty) in_qty from ez_jaego_inout where product_id = '$product_id' and type = 1";
+	$list3 = mysql_fetch_array(mysql_query($sql, $connect));
+	$in_qty = $list3[in_qty];
+
+	////////////////////////////////////////
+	// 출고량 합계
+	// $sql = "select sum(qty) out_qty from ez_jaego_inout where product_id = '$product_id' and type = 2 and start_date >= '$start_date'";
+	$sql = "select sum(qty) out_qty from ez_jaego_inout where product_id = '$product_id' and type = 2";
+	$list3 = mysql_fetch_array(mysql_query($sql, $connect));
+	$out_qty = $list3[out_qty];
+
+	/////////////////////////////////////
+	if ($date_type == 1)  # 발주일 기준
+	{
+	  $query_option = " and collect_date >= '$start_date' 
+			  and collect_date <= '$end_date'";
+	}
+	else if ($date_type == 2)  # 배송일 기준(POS출고확인일)
+	{
+	  $query_option = " and status = 8
+		  and substring(trans_date_pos,1,10) >= '$start_date' 
+		  and substring(trans_date_pos,1,10) <= '$end_date'";
+	}
+
+	////////////////////////////////////////
+	// 판매량 합계
+	$sql = "select sum(qty) sale_qty from orders where product_id = '$product_id' and shop_id != '' and order_cs not in (3,4,6,8,9,10) 
+		$query_option";
+	$list3 = mysql_fetch_array(mysql_query($sql, $connect));
+	$sale_qty = $list3[sale_qty];
+
+/*
+        // 묶음 상품 판매량 추가
+	$sql = "select sum(qty) sale_qty from orders where pack_list is not null and pack_list like '%${product_id}%' and shop_id != '' and order_cs not in (3,4,6,8,9,10) ${options}";
+	$list4 = mysql_fetch_array(mysql_query($sql, $connect));
+	$sale_qty = $list3[sale_qty] + $list4[sale_qty];
+*/
+
+	////////////////////////////////////////////
+	$remain = $in_qty - $out_qty - $sale_qty;
+	return $remain;
+  }
+
+  function productlist()
+  {
+    global $template;
+    global $connect;
+
+    $start_date = date("Y-m-d");
+
+    require_once 'Spreadsheet/Excel/Writer.php';
+    $xls_name = $start_date."-빈상품목록.xls";
+
+    // Creating a workbook
+    $workbook = new Spreadsheet_Excel_Writer();
+
+
+    // Creating a worksheet
+    $worksheet =& $workbook->addWorksheet('재고목록');
+
+    $worksheet->setColumn(0, 0, 10);
+    $worksheet->setColumn(1, 1, 10);
+    $worksheet->setColumn(2, 2, 30);
+    $worksheet->setColumn(3, 3, 30);
+    $worksheet->setColumn(4, 4, 15);
+    $worksheet->setColumn(5, 5, 15);
+    $worksheet->setColumn(6, 6, 15);
+    $worksheet->setColumn(7, 7, 15);
+    $worksheet->setColumn(8, 8, 15);
+    $format_bold =& $workbook->addFormat();
+    $format_bold->setAlign('center');
+    $format_bold->setBold();
+    ////////////////////////////////////////////////////////////////
+    // 1. 해당기준일의 주문을 모두 가져와 상품코드별로 SUM을 한다.
+    // 2. 해당상품코드를 ez_jaegolist에서 찾아서 정보를 반영한다.
+
+    $header_items = array ("공급처", "상품코드", "상품명", "옵션", "현재고수량", "당일입고수량", "입고내역", "당일출고수량", "출고내역");
+    $col = 0;
+    foreach ($header_items as $item)
+    {
+	$worksheet->write(0, $col, $item, $format_bold);
+	$col++;
+    }
+
+
+    ///////////////////////////////////////
+    $row = 1;
+    $sql = "select * from ez_jaegolist order by product_id";
+    $result = mysql_query($sql, $connect) or die(mysql_error());
+    while ($list = mysql_fetch_array($result))
+    {
+	$base_date = $list[start_date];
+	///////////////////////////////////////
+	$query_option = " and collect_date >= '$base_date' 
+			  and collect_date <= '$start_date'";
+
+
+	//////////////////////////////////////////////
+	$sql = "select * from products where product_id = '$list[product_id]'";
+	$list1 = mysql_fetch_array(mysql_query($sql, $connect));
+
+	$supply_name = class_vendor::get_name($list1[supply_code]);
+	$worksheet->write($row, 0, $supply_name);
+	$worksheet->writeString($row, 1, $list1[product_id]);
+	$worksheet->write($row, 2, $list1[name]);
+	$worksheet->write($row, 3, "원본");
+	$row++;
+
+	///////////////////////////////////////
+	$sql = "select * from products where org_id = '$list[product_id]' and is_delete = 0  order by product_id";
+	$sub_result = mysql_query($sql, $connect) or die(mysql_error());
+	$sub_rows = mysql_num_rows($sub_result);
+	while ($sub_list = mysql_fetch_array($sub_result))
+	{
+	  $worksheet->write($row, 0, $supply_name);
+	  $worksheet->writeString($row, 1, $sub_list[product_id]);
+	  $worksheet->write($row, 2, $sub_list[name]);
+	  $worksheet->write($row, 3, $sub_list[options]);
+	  $row++;
+	}
+    }
+  
+    ////////////////////////////////////
+    // Let's send the file
+    // sending HTTP headers
+    $workbook->send($xls_name);
+
+    $workbook->close();
+  }
+
+  function upload()
+  {
+      global $template;
+      global $connect;
+
+      $master_code = substr( $template, 0,1);
+      include "template/" . $master_code ."/" . $template . "_upload.php";
+  }
+
+  function I902()
+  {
+      global $template;
+      global $connect;
+
+      $master_code = substr( $template, 0,1);
+      include "template/" . $master_code ."/" . $template . ".htm";
+  }
+
+}
+?>

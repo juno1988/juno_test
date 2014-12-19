@@ -1,0 +1,524 @@
+
+    $th 정보 -->
+<br>
+<!-- 화면 타이틀 정보 -->
+<div id="titleStyle">
+  <div id="title01">
+    <? 
+	$help_url = "http://cafe.naver.com/ezadminhelp/219";
+	include "template/inc/disp_path.v15"; ?>
+  </div>
+</div>
+<?
+    list($subdomain, $base) = split("\.", $_SERVER[HTTP_HOST]);
+    $host = $subdomain;
+?>
+<script type="text/javascript" src="js/swf_js.js"></script>
+
+<script language=javascript>
+
+function notyet_download()
+{
+	if ( myform.trans_format.value == 0 )
+	{
+		alert ( " 포맷 양식을 선택 하십시요" );
+		return;
+	}
+
+    dn_flag = 1
+    myform.action.value = "download";
+    myform.submit();
+}
+
+function build_file()
+{
+	
+    if( $("#trans_format > option:selected").val()==0 )
+    {
+	alert ( " 포맷 양식을 선택 하십시요" );
+	return;
+    }
+
+    dn_flag = 1
+    $("#v_trans_format").val( $("#trans_format > option:selected").val() );
+    myform.action.value = "build_file";
+    myform.submit();
+}
+
+m_file ="";
+// 다운로드 실행..
+function download( _file )
+{
+	// alert ( 'download start'+file );.
+	m_file = _file
+	// $.blockUI({message:$("#add_cs_layer"),fadeIn:false});
+	download_file();
+}
+
+function download_file()
+{
+    location.href = "function.htm?template=DR00&action=download_file&file=" + m_file;
+}
+
+function get_file_url()
+{
+	return down_file_url;	
+}
+
+function down_complete()
+{
+	alert("다운 완료");
+	$.unblockUI({fadeOut:false});
+	document.location.reload();
+}
+
+function delay(gap){ /* gap is in millisecs */
+	var then,now;
+	then=new Date().getTime();
+	now=then;
+	
+	while((now-then)<gap){
+		now=new Date().getTime();
+	}
+}
+
+function confirm_order()
+{
+	myform.action.value = "confirm";
+	myform.submit();
+}
+
+function init_download()
+{
+    $.post("function.htm", { 
+        template   : "DR00", 
+        action     : "init_download",
+        timeFlag : Number( new Date() )
+    }, 
+    function( response ){ 
+        alert("초기화 완료");
+    });
+}
+
+function search()
+{
+    _stamp = get_stamp();
+
+    params = {};
+    params["template"]     = "DR00";
+    params["action"]       = "get_count";
+    params["stamp"]        = _stamp;
+    params["status"]       = $("#status> option:selected").val();
+    params["group_id"]     = $("#group_id> option:selected").val();
+    params                 = build_params ("#myform", params);
+    params["start_date"]   = $("#f-calendar-field-1").val();
+    params["end_date"]     = $("#f-calendar-field-2").val();
+    params["query_string"] = $("#query_string").val();
+    
+    params["key"]      = "common";
+    $("#div_common").load("function.htm" , params );
+    params["key"]      = "pack";
+    $("#div_pack").load("function.htm" , params );
+    
+    params["key"]      = "total_products_cnt";
+    $("#div_total_products_cnt").load("function.htm" , params );    
+    
+    // iframe에 쏜다.
+    _str  = "popup.htm?template=DR02";
+    _str += "&trans_who="    + $("#trans_who> option:selected").val();
+    _str += "&status="       + $("#status> option:selected").val();
+    _str += "&supply_code="  + $("#supply_code> option:selected").val();
+    _str += "&s_group_id="   + $("#s_group_id> option:selected").val();
+    _str += "&shop_id="      + $("#shop_id> option:selected").val();
+    _str += "&group_id="     + $("#group_id> option:selected").val();
+    _str += "&start_date="   + $("#f-calendar-field-1").val();
+    _str += "&end_date="     + $("#f-calendar-field-2").val();
+    _str += "&start_hour="   + $("#start_hour> option:selected").val();
+    _str += "&end_hour="     + $("#end_hour> option:selected").val();
+    _str += "&query_string=" + $("#query_string").val();
+    
+    //alert( _str );
+    $("#order_list").attr("src", _str);
+}
+
+function trans_select( originalRequest )
+{
+    var url="function.htm";
+
+	/*
+    str_trans_corp= encodeURIComponent( myform.trans_corp.value );
+    var pars = "template=B700&action=trans_select&trans_corp=" + str_trans_corp;
+
+    var myAjax = new Ajax.Request(
+                        url, 
+                        {
+                                asynchronous: true,
+                                method: 'get', 
+                                parameters: pars,
+                                onComplete: trans_select_action
+                        });
+	*/
+	pars = {};
+	pars['template'] = "B700";
+	pars['action']   = "trans_select";
+	pars['trans_corp'] = myform.trans_corp.value;
+
+	$.post( url, pars, function( data )
+		{
+			trans_select_action( data );
+		}
+	)
+}
+
+</script>
+<script type="text/javascript" src="js/common.js"></script>
+
+<!-- begin of add_cs_layer -->
+<div id="add_cs_layer" style="display:none;">
+    <!--div id='dn_layer' style='width:200;height:150;'-->
+	<center><table width=200>
+		<tr>
+			<td align=center>작업이 완료 되었습니다.</td>
+		</tr>
+		<tr>
+			<td><a href='javascript:download_file()' class=btn12>다운로드</a></td>
+		</tr>
+		<!--tr>
+			<td align=center><script>play_swf('swf/file_down','200','100','filedown','')</script></td>
+		</tr-->
+		<tr>
+			<td>&nbsp</td>
+		</tr>
+		<tr>
+			<td align=center><input type=button onclick="javascript:$.unblockUI({fadeOut:false});" value="닫기"></td>
+		</tr>
+	</table><center>	
+    <!--/div-->
+</div>
+<!-- end of add_cs_layer -->
+
+<iframe name=_dummy height=200 width=200 src='#' style="display:none"></iframe>
+
+<body>
+<!--    
+<div style='text-align:right;padding-right:10px'>
+    <a href="http://ezadmin.tistory.com/entry/주문-다운로드" target="_new">(H)</a>
+</div>
+-->
+<table cellspacing=0 cellpadding=0 border=0 width=100% bgcolor="#A5A5A5">
+  <tr>
+    <td bgcolor="#FFFFFF" style='padding-left:10px' valign=top>
+
+        <form id=download_form name=download_form method=post> 
+             <input type=hidden name=filename id='filename'>
+             <input type=hidden name=action value='download2'>
+             <input type=hidden name=template value="<?= $template?>">
+		</form>
+
+        <form id=myform name=myform method=post target="_dummy" action='popup_utf8.htm'> 
+             <input type=hidden name=page value=1>
+             <input type=hidden name=v_trans_format id='v_trans_format'>
+             <input type=hidden name=action>
+             <input type=hidden name=template value="<?= $template?>">
+             <!-- 
+               req_takeback: 미처리 회수
+               transno_takeback: 송장 입력 회수
+               comp_takeback: 회수 완료
+             -->
+             <input type=hidden name=download_type>
+<table width="100%" border="0" cellspacing="0" cellpadding="0" class="searchB">
+  <tr>
+    <td width="6" height="6" background="images15/bg_search_b011.gif"></td>
+    <td background="images15/bg_search_b012.gif"></td>
+    <td width="6" background="images15/bg_search_b013.gif"></td>
+  </tr>
+  <tr>
+    <td width="6" background="images15/bg_search_b014.gif"></td>
+    <td class="searchZone">
+                <table border=0 cellpadding=0 cellspacing=0 >
+                   <tr>
+                      <!--td width=50 align=center><span class=white>공급처:</span></td-->
+                      <td width=50>
+                      <? $sel_trans_who[$_REQUEST["trans_who"]] = "selected"; ?>
+                      <select name=trans_who id='trans_who'>
+                         <option value=0>선불 . 착불</option>
+                         <option value="선불" <?= $sel_trans_who["선불"] ?>>선불</option>
+                         <option value="착불" <?= $sel_trans_who["착불"] ?>>착불</option>
+                      </select>
+                      </td>
+                      <td>
+                      <? $sel_status[$_REQUEST["status"]] = "selected"; ?>
+                      <select name=status id="status">
+                         <option value=0>전체 상태</option>
+                         <option value="1" <?= $sel_status[1] ?>>정상</option>
+                         <option value="2" <?= $sel_status[2] ?>>교환(배송 후)</option>
+                         <!--option value="4" <?= $sel_status[4] ?>>교환발주(배송후)</option-->
+                         <option value="3" <?= $sel_status[3] ?>>회수</option>
+                         <option value="7" <?= $sel_status[7] ?>>송장</option>
+                      </select>
+                      </td>
+
+                      <td width=100 align=center><? 
+                      if ( $_SESSION["LOGIN_LEVEL"] )
+                          $this->supply_select();
+                      else
+                          $this->supply_inputbox( $_SESSION["LOGIN_CODE"] );
+                          //echo "<span class=white>공급처: " . $this->get_supply_name2( $supply_code ) . "</span>"; 
+                      ?></td>
+                      <td><? class_ui::combo_supplygroup( $data[group_id] ) ?></td>
+                      <td width=100><?  include "template/inc/shoplist_combo.inc" ?></td>
+                      <td>
+                      </td>
+                      <td width=100>
+                        <? class_ui::combo_shopgroup( $_REQUEST[group_id] ) ?>
+                      </td>
+                      <td>
+                            <a href=javascript:search() class=btn1><img src=images/search_link.gif align=absmiddle> 검색 </a>&nbsp;
+                      </td>
+                      <td>
+                            <a href=javascript:init_download() class=btn1><img src=images/search_link.gif align=absmiddle> 초기화 </a>&nbsp;
+                      </td>
+                   </tr>
+                </table>
+                <table border=0 cellpadding=0 cellspacing=0 >
+                   <tr>
+                    <td>발주일 : </td>
+                    <td colspan=8>
+                        <table>
+                            <tr>
+                                <td><? include "template/inc/calendar_time.inc"; ?></td>
+                            </tr>
+                        </table>
+                    </td>
+                    <td>
+                        <table>
+                            <tr>
+                                <td>수령자명:<input type=text id='query_string' name='query_string'></td>
+                            </tr>
+                        </table>
+                    </td>
+                  </tr>
+                   
+                </table>
+    </td>
+    <td width="6" background="images15/bg_search_b016.gif"></td>
+  </tr>
+  <tr>
+    <td width="6" height="6" background="images15/bg_search_b017.gif"></td>
+    <td background="images15/bg_search_b018.gif"></td>
+    <td width="6" background="images15/bg_search_b019.gif"></td>
+  </tr>
+</table>
+    </td>
+  </tr>
+  <tr>
+    <td bgcolor="#FFFFFF" style='padding-left:10px' valign=top><br>
+
+    <!-- 내용 -->
+	
+	<table border=0 cellpadding=0 cellspacing=1 bgcolor=cccccc width=800>
+            <tr>
+              <td colspan=2 bgcolor=f7f7f7 height=30>
+              <table border=0 cellpadding=0 cellspacing=0>
+                 <tr>
+                    <td align=center width=100>
+                    <? 
+                        $trans_corp = $_SESSION["BASE_TRANS_CODE"];
+			global $event;
+                        $event = "OnChange=javascript:trans_select()";
+                        include "template/inc/trans_select.inc" ?>
+                    </td>
+		    <td width=100>
+                      <div id=div_trans_format>
+                        <select name=trans_format id='trans_format' width=100'>
+                          <option name=0> 포맷 </option>
+                        </select>
+                      </div>
+                    </td>
+                    <td>
+		    <a href=javascript:build_file() class=btn2><img src=images/icon_download.gif absalign=middle> 파일생성</a>
+			&nbsp;
+			<input type=checkbox name=html_download value=1>HTML형식 다운로드(<span class=red> 한글이 깨지는 경우 또는 Excel 2007 사용시 </span>)
+                    </td>
+                  </tr>
+                </table>
+
+
+              </td>
+            </tr>
+	    <tr bgcolor=ffffff>
+              <td height=25 width=300>&nbsp;일반 주문 요청 개수</td>
+              <td align=center width=300>
+                   <div class=red id=div_common>조회중..</div>
+              </td>
+            </tr>
+	    <tr bgcolor=ffffff>
+              <td height=25 width=300>&nbsp;합포 주문 요청 개수</td>
+              <td align=center width=300>
+                   <div class=red id=div_pack>조회중..</div></td>
+              </td>
+            </tr>
+        <tr bgcolor=ffffff>
+              <td height=25 width=300>&nbsp;총 상품 개수</td>
+              <td align=center width=300>
+                   <div class=red id='div_total_products_cnt'>조회중..</div></td>
+              </td>
+            </tr>
+	</table>
+	<br>
+	
+    
+    
+
+	<!--div>
+	* 배송상태이지만 실제론 미배송인 주문
+	<table border=0 cellpadding=0 cellspacing=1 bgcolor=cccccc width=700>
+	    <tr bgcolor=ffffff>
+              <td height=25 width=300>&nbsp;미송 주문 개수</td>
+              <td align=center width=300>
+		<table border=0 cellpadding=0 cellspacing=0 width=100%>
+		   <tr>
+    		       <td align=center><div class=red id=div_notyet style='margin-left:100px'>조회중..</div></td>
+                       <td width=100><div style='float:right;'><a href=javascript:notyet_download() class=btn2>download</a></div></td>
+                   </tr>
+                </table>
+              </td>
+              </td>
+            </tr>
+	</table>
+	</div-->
+	</form>
+    </td>
+  </tr>
+  <tr>
+    <td colspan=3 bgcolor=ffffff>
+        <iframe style="margin:0; padding:0;  border-width:0px; border-style:solid;" id='order_list' src="popup.htm?template=DR02" width=820 height=500></iframe>
+    </td>
+  </tr>
+</table>
+
+
+<!-- 기본 택배 선택 -->
+<script language=javascript>
+
+    function get_stamp()
+    {
+    	var d         = new Date();
+    	var curr_hour = d.getHours();
+    	var curr_min  = d.getMinutes();
+    	var curr_sec  = d.getSeconds();
+    	var curr_msec = d.getMilliseconds();
+    	return curr_hour + ":" + curr_min + ":" + curr_sec + ":" + curr_msec;
+    }
+
+    $(document).ready(function(){
+		setTimeout('_init()', 500)
+		// _init();
+        trans_select2();
+	})
+
+    // 초기화
+    function _init()
+    {
+		_stamp = get_stamp();
+
+		// remove download_date
+        $.get("function.htm", {template:"DR00",action:"remove_download_date"},
+            function( data ){ 
+			    // alert ( data );
+                //var myObject = eval('(' + data + ')');
+                //alert ( myObject.result);
+        });
+
+        var params       = {};
+	    params["template"] = "DR00";
+	    params["action"]   = "get_count";
+	    params["stamp"]    = _stamp;
+	    params["status"]   = $("#status> option:selected").val();
+	    params             = build_params ("#myform", params);
+        
+        params["start_date"] = $("#f-calendar-field-1").val();
+        params["end_date"]   = $("#f-calendar-field-2").val();
+        
+	    params["key"]      = "common";
+	    $("#div_common").load("function.htm" , params );
+
+	    params["key"]      = "pack";
+	    $("#div_pack").load("function.htm" , params );
+    
+        
+        params["key"]      = "total_products_cnt";
+	    $("#div_total_products_cnt").load("function.htm" , params );
+	    
+	    // 미배송 개수
+	    // date: 2008.4.23
+	    params["action"]   = "notyet_count";
+	    params["key"]      = "notyet";
+	    // 필요 없음 2008-6-20 jk
+	    // $("#div_notyet").load("function.htm" , params );
+    }
+
+    function build_params( obj , params)
+    {
+        // params가 없을 경우 
+        if ( !params )
+            var params = {};
+
+        // input 값을 검색해서 입력
+        // parameter list
+        // 
+        //$( "#myform" ).find("option[@selected]")
+        $(obj).find("option[selected]")
+                .each( function() { 
+					// alert ( this.parentNode.name + "/" + this.value );
+                    params[this.name || this.parentNode.name || this.id] = this.value
+                } )
+
+        return params;
+   }
+/////////////////////////////////////////////////////////////
+
+  function trans_select2()
+  {
+    var url="function.htm";
+
+	// 
+	pars = {}
+	pars['template'] = "B700"
+	pars['action']   = "trans_select"
+	pars['trans_corp']= myform.trans_corp.value 
+	$.post( url, pars, function( data )
+		{
+			trans_select_action( data );
+		}
+	)
+
+  }
+
+
+  function trans_select_action( originalRequest )
+  {
+
+    hide_waiting();
+
+    var option_str;
+    option_str = "<select name='trans_format' id='trans_format'>";
+    option_str = option_str +  "<option value=0>사용자 정의</option>";
+
+    if ( originalRequest != null )
+    {
+        //alert ( originalRequest);
+        option_str = option_str + originalRequest;
+    }
+
+    option_str = option_str +  "</select>";
+
+    div_trans_format.innerHTML = option_str;
+  }
+
+</script>
+
+
+
+</body>
+_SESSION[BCK_DATE] = "2014-09-01";

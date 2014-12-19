@@ -1,0 +1,572 @@
+class_A100.php:	$passwd = $_REQUEST[passwd];
+class_A100.php:	$corpname = $_REQUEST[corpname];
+class_A100.php:	$boss = $_REQUEST[boss];
+class_A100.php:	$corpno1 = $_REQUEST[corpno1];
+class_A100.php:	$corpno2 = $_REQUEST[corpno2];
+class_A100.php:	$corpno3 = $_REQUEST[corpno3];
+class_A100.php:	$tel = $_REQUEST[tel];
+class_A100.php:	$mobile1 = $_REQUEST[mobile1];
+class_A100.php:	$mobile2 = $_REQUEST[mobile2];
+class_A100.php:	$mobile3 = $_REQUEST[mobile3];
+class_A100.php:	$email = $_REQUEST[email];
+class_A100.php:	$smsok = $_REQUEST[smsok];
+class_A100.php:	$zip1 = $_REQUEST[zip1];
+class_A100.php:	$zip2 = $_REQUEST[zip2];
+class_A100.php:	$address1 = $_REQUEST[address1];
+class_A100.php:	$address2 = $_REQUEST[address2];
+class_A100.php:	$admin = $_REQUEST[admin];
+class_A300.php:      $query .= " where id = '" . $_REQUEST["id"] . "'";
+class_A300.php:	$userid = $_REQUEST[id];
+class_A300.php:	$this->redirect ( "?template=A302&userid=" . $_REQUEST["id"] );
+class_A300.php:      $link_url = $_REQUEST["link_url"];
+class_A400.php:	$stock_manage_use = $_REQUEST[stock_manage_use];
+class_A400.php:	$base_trans_code = $_REQUEST[base_trans_code];
+class_A400.php:	$base_trans_price = $_REQUEST[base_trans_price];
+class_A400.php:	$jaego_use = $_REQUEST[jaego_use];
+class_A400.php:	$pack_diff_supply = $_REQUEST[pack_diff_supply];
+class_A400.php:	$bracket_match_use = $_REQUEST[bracket_match_use];
+class_A400.php:	$pack_bracket = $_REQUEST[pack_bracket];
+class_A400.php:	$jaego_basedt = $_REQUEST[jaego_basedt];
+class_A500.php:	$collect_date = $_REQUEST[collect_date];	
+class_A500.php:	$shop_id = $_REQUEST[shop_id];
+class_A500.php:	$collect_date = $_REQUEST[collect_date];	
+class_A500.php:	$shop_id = $_REQUEST[shop_id];
+class_A600.php:	$mycode = $_REQUEST[mycode];
+class_A600.php:	$passwd = $_REQUEST[passwd];
+class_A600.php:	$corpname = $_REQUEST[corpname];
+class_A600.php:	$boss = $_REQUEST[boss];
+class_A600.php:	$corpno1 = $_REQUEST[corpno1];
+class_A600.php:	$corpno2 = $_REQUEST[corpno2];
+class_A600.php:	$corpno3 = $_REQUEST[corpno3];
+class_A600.php:	$tel = $_REQUEST[tel];
+class_A600.php:	$mobile1 = $_REQUEST[mobile1];
+class_A600.php:	$mobile2 = $_REQUEST[mobile2];
+class_A600.php:	$mobile3 = $_REQUEST[mobile3];
+class_A600.php:	$email = $_REQUEST[email];
+class_A600.php:	$smsok = $_REQUEST[smsok];
+class_A600.php:	$zip1 = $_REQUEST[zip1];
+class_A600.php:	$zip2 = $_REQUEST[zip2];
+class_A600.php:	$address1 = $_REQUEST[address1];
+class_A600.php:	$address2 = $_REQUEST[address2];
+class_A600.php:	$admin = $_REQUEST[admin];
+class_A700.php:	$act = $_REQUEST[act];
+class_B.php:        $string = $_REQUEST["string"];
+class_B.php:	$curr_page = $_REQUEST["page"];
+class_B.php:        $keyword = $_REQUEST["keyword"];
+class_B100.php:        $curr_page = $_REQUEST["page"];
+class_B100.php:	$shop_id = $_REQUEST["shop_id"];
+class_B100.php:	$shop_id 	= $_REQUEST[shop_id];
+class_B100.php:	$shop_name 	= $_REQUEST[shop_name];
+class_B100.php:	$userid 	= $_REQUEST[userid];
+class_B100.php:	$passwd 	= $_REQUEST[passwd];
+class_B300.php:      $query .= " where id = '" . $_REQUEST["id"] . "'";
+class_B300.php:      $this->redirect ( "?template=B302&userid=" . $_REQUEST["id"] );
+class_B300.php:      $link_url = $_REQUEST["link_url"];
+class_B400.php:	$id_list = $_REQUEST["result"];
+class_B500.php:	$id_list = $_REQUEST["result"];
+class_C.php:      $string = $_REQUEST["string"];
+class_C.php:      $start_date = $_REQUEST["start_date"] ? $_REQUEST["start_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_C.php:      $end_date = $_REQUEST["end_date"] ? $_REQUEST["end_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_C.php:      $start_date = $_REQUEST["start_date"] ? $_REQUEST["start_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_C.php:      $end_date = $_REQUEST["end_date"] ? $_REQUEST["end_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_C.php:      $page = $_REQUEST["page"] ? $_REQUEST["page"] : 1;
+class_C.php:      $string = $_REQUEST["string"];
+class_C.php:      switch ( $_REQUEST["string_type"] )
+class_C.php:      if ( $_REQUEST["supply_code"] )
+class_C.php:         $option .= " and supply_code =  '" . $_REQUEST["supply_code"] . "'";
+class_C.php:      $page = $_REQUEST["page"] ? $_REQUEST["page"] : 1;
+class_C.php:      if ( $_REQUEST["supply_code"] )
+class_C.php:        $option .= " and a.supply_code =  '" . $_REQUEST["supply_code"] . "'";
+class_C.php:      $string = $_REQUEST["string"];
+class_C.php:      switch ( $_REQUEST["string_type"] )
+class_C.php:      if ( $_REQUEST["e_sale"] )
+class_C.php:         $option .= " and enable_sale = '". $_REQUEST["e_sale"] . "'";
+class_C.php:      $page = $_REQUEST["page"] ? $_REQUEST["page"] : 1;
+class_C.php:      if ( $_REQUEST["shop_id"] )
+class_C.php:         $option .= " and b.shop_id =  '" . $_REQUEST["shop_id"] . "'";
+class_C.php:      if ( $_REQUEST["supply_code"] )
+class_C.php:        $option .= " and a.supply_code =  '" . $_REQUEST["supply_code"] . "'";
+class_C.php:      $string = $_REQUEST["string"];
+class_C.php:      switch ( $_REQUEST["string_type"] )
+class_C.php:      if ( $_REQUEST["e_sale"] )
+class_C.php:         $option .= " and enable_sale = '". $_REQUEST["e_sale"] . "'";
+class_C.php:      $start_date = $_REQUEST["start_date"] ? $_REQUEST["start_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_C.php:      $end_date = $_REQUEST["end_date"] ? $_REQUEST["end_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_C.php:      $shop_id = $_REQUEST["shop_id"];
+class_C.php:         if ( $_REQUEST["string_type"] == "id" )
+class_C.php:         else if ( $_REQUEST["string_type"] == "name" )
+class_C.php:      switch ( $_REQUEST["e_sale"] )
+class_C.php:         if ( $_REQUEST["string_type"] == "id" )
+class_C.php:         else if ( $_REQUEST["string_type"] == "name" )
+class_C.php:      switch ( $_REQUEST["e_sale"] )
+class_C200.php:      if ( $_REQUEST["page"] )
+class_C200.php:      if ( $_REQUEST["page"] )
+class_C200.php:      if ( $_REQUEST["change_price"] )
+class_C200.php:      $org_enable_sale = $_REQUEST["org_enable_sale"];
+class_C200.php:      $enable_sale = $_REQUEST["enable_sale"];
+class_C200.php:	$pack_mgr = $_REQUEST[pack_mgr];
+class_C200.php:	$p1 = $_REQUEST[p1];
+class_C200.php:	$p2 = $_REQUEST[p2];
+class_C200.php:	$p3 = $_REQUEST[p3];
+class_C200.php:	$p4 = $_REQUEST[p4];
+class_C200.php:	$p5 = $_REQUEST[p5];
+class_C200.php:	$id = $_REQUEST[id];
+class_C200.php:	$product_id = $_REQUEST[product_id];
+class_C200.php:	$amount = $_REQUEST[amount];
+class_C200.php:	$gift = $_REQUEST[gift];
+class_C200.php:	$id = $_REQUEST[id];
+class_C200.php:	$product_id = $_REQUEST[product_id];
+class_C200.php:	$amount = $_REQUEST[amount];
+class_C200.php:	$gift = $_REQUEST[gift];
+class_C300.php:      $start_date = $_REQUEST["start_date"];
+class_C300.php:      $end_date = $_REQUEST["end_date"];
+class_C500.php:      if ( !$_REQUEST["link_url"] )
+class_C500.php:         $link_url = urlencode("template=C500&start_date=" . $_REQUEST["start_date"] . "&end_date=" . $_REQUEST["end_date"]);
+class_C500.php:      $data = $this->get_detail( $_REQUEST["id"] );
+class_C500.php:      $id = $_REQUEST["id"];
+class_C500.php:                 where shop_id='" . $_REQUEST["shop_id"]  . "' and shop_code='" . $_REQUEST["shop_code"] . "'";
+class_C700.php:      if ( $_REQUEST["page"] )
+class_C800.php:      if ( $_REQUEST["page"] )
+class_C900.php:      if ( $_REQUEST["page"] )
+class_CB00.php:      if ( $_REQUEST["page"] )
+class_CD00.php:      if ( $_REQUEST["page"] )
+class_CE00.php:      if ( $_REQUEST["page"] )
+class_CF00.php:      if ( $_REQUEST["page"] )
+class_CF00.php:         if ( $_REQUEST["string_type"] == "id" )
+class_CF00.php:         else if ( $_REQUEST["string_type"] == "name" )
+class_CF00.php:      switch ( $_REQUEST["e_sale"] )
+class_CG00.php:      if ( $_REQUEST["page"] )
+class_CG00.php:      if ( $_REQUEST["change_price"] )
+class_CG00.php:      $org_enable_sale = $_REQUEST["org_enable_sale"];
+class_CG00.php:      $enable_sale = $_REQUEST["enable_sale"];
+class_CH00.php:        $page    = $_REQUEST["page"] ? $_REQUEST["page"] : 1;
+class_CH00.php:        $page    = $_REQUEST["page"] ? $_REQUEST["page"] : 1;
+class_CH00.php.bak:        $page    = $_REQUEST["page"] ? $_REQUEST["page"] : 1;
+class_CH00.php.bak:        $page    = $_REQUEST["page"] ? $_REQUEST["page"] : 1;
+class_CJ00.php:	$supply_code = $_REQUEST[supply_code];
+class_CJ00.php:	$product_name = $_REQUEST[product_name];
+class_CJ00.php:	$org_price = $_REQUEST[org_price];
+class_CJ00.php:	$supply_price = $_REQUEST[supply_price];
+class_CJ00.php:	$shop_price = $_REQUEST[shop_price];
+class_CJ00.php:	$is_free_deliv = $_REQUEST[is_free_deliv];
+class_CJ00.php:	$tax = $_REQUEST[tax];
+class_CJ00.php:	$product_desc = $_REQUEST[product_desc];
+class_CJ00.php:	$pack_mgr = $_REQUEST[pack_mgr];
+class_CJ00.php:	$p1 = $_REQUEST[p1];
+class_CJ00.php:	$p2 = $_REQUEST[p2];
+class_CJ00.php:	$p3 = $_REQUEST[p3];
+class_CJ00.php:	$p4 = $_REQUEST[p4];
+class_CJ00.php:	$p5 = $_REQUEST[p5];
+class_D.php:	$keyword = $_REQUEST["keyword"];
+class_D.php:	$page = $_REQUEST["page"];
+class_D.php:	$start_date = $_REQUEST["start_date"] ? $_REQUEST["start_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_D.php:	$end_date = $_REQUEST["end_date"] ? $_REQUEST["end_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_D.php:        $supply_code = $_REQUEST["supply_code"];
+class_D.php:        $shop_id = $_REQUEST["shop_id"];        // 판매처
+class_D.php:	$keyword = $_REQUEST["keyword"];
+class_D.php:	$page = $_REQUEST["page"];
+class_D.php:	//$start_date = $_REQUEST["start_date"] ? $_REQUEST["start_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_D.php:	//$end_date = $_REQUEST["end_date"] ? $_REQUEST["end_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_D.php:            $supply_code = $_REQUEST["supply_code"];// 공급처
+class_D.php:        $shop_id = $_REQUEST["shop_id"];        // 판매처
+class_D.php:           if ( $search_date == "trans_date" && $_REQUEST["status"] == 99 )
+class_D.php:              if ( $_REQUEST["status"] )
+class_D.php:                 $options .= " and a.status = '". $_REQUEST["status"] ."'";
+class_D200.php:	$shop_id = $_REQUEST[shop_id];
+class_D200.php:	$no_list = stripslashes($_REQUEST[no_list]);
+class_D200.php:	$subno_list = stripslashes($_REQUEST[subno_list]);
+class_D200.php:	$un_no_list = stripslashes($_REQUEST[un_no_list]);
+class_D200.php:	$un_subno_list = stripslashes($_REQUEST[un_subno_list]);
+class_D400.bak:      $start_date = $_REQUEST["start_date"];
+class_D400.bak:      $end_date = $_REQUEST["end_date"];
+class_D400.bak:      if ( $_REQUEST["page"] )
+class_D400.bak:	$keyword = $_REQUEST["keyword"];
+class_D400.bak:	$page = $_REQUEST["page"];
+class_D400.bak:	$start_date = $_REQUEST["start_date"] ? $_REQUEST["start_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_D400.bak:	$end_date = $_REQUEST["end_date"] ? $_REQUEST["end_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_D400.bak:        $supply_code = $_REQUEST["supply_code"];// 공급처
+class_D400.bak:        $shop_id = $_REQUEST["shop_id"];        // 판매처
+class_D400.bak:       foreach ( $_REQUEST as $key=>$value )
+class_D400.php:      $end_date = $_REQUEST["end_date"];
+class_D400.php:      if ( $_REQUEST["page"] )
+class_D400.php:	$keyword = $_REQUEST["keyword"];
+class_D400.php:	$page = $_REQUEST["page"];
+class_D400.php:	$start_date = $_REQUEST["start_date"] ? $_REQUEST["start_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_D400.php:	$end_date = $_REQUEST["end_date"] ? $_REQUEST["end_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_D400.php:        $supply_code = $_REQUEST["supply_code"];// 공급처
+class_D400.php:        $shop_id = $_REQUEST["shop_id"];        // 판매처
+class_D400.php:       foreach ( $_REQUEST as $key=>$value )
+class_D400.php.bak:      $start_date = $_REQUEST["start_date"];
+class_D400.php.bak:      $end_date = $_REQUEST["end_date"];
+class_D400.php.bak:      if ( $_REQUEST["page"] )
+class_D400.php.bak:	$keyword = $_REQUEST["keyword"];
+class_D400.php.bak:	$page = $_REQUEST["page"];
+class_D400.php.bak:	$start_date = $_REQUEST["start_date"] ? $_REQUEST["start_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_D400.php.bak:	$end_date = $_REQUEST["end_date"] ? $_REQUEST["end_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_D400.php.bak:        $supply_code = $_REQUEST["supply_code"];// 공급처
+class_D400.php.bak:        $shop_id = $_REQUEST["shop_id"];        // 판매처
+class_D400.php.bak:       foreach ( $_REQUEST as $key=>$value )
+class_D500.php:      $page = $_REQUEST["page"];
+class_D600.php:      class_D::get_trans_info( $_REQUEST["seq"], &$trans_corp, &$trans_no );
+class_D600.php:      $trans_corp = $_REQUEST["trans_corp"];
+class_D600.php:      $trans_no = $_REQUEST["trans_no"];
+class_D600.php:      $seq = $_REQUEST["seq"];
+class_D600.php:      $trans_corp = $_REQUEST["trans_corp"];
+class_D600.php:      $trans_no = $_REQUEST["trans_no"];
+class_D600.php:      $seq = $_REQUEST["seq"];
+class_D700.php:      if ( $_REQUEST["page"] )
+class_D700.php:	$keyword     = $_REQUEST["keyword"];
+class_D700.php:	$page        = $_REQUEST["page"];
+class_D700.php:	$start_date  = $_REQUEST["start_date"] ? $_REQUEST["start_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_D700.php:	$end_date    = $_REQUEST["end_date"] ? $_REQUEST["end_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_D700.php:        $supply_code = $_REQUEST["supply_code"];// 공급처
+class_D700.php:        $supply_id   = $_REQUEST["supply_id"];// 공급처
+class_D700.php:        $shop_id     = $_REQUEST["shop_id"];        // 판매처
+class_D800.php:      if ( $_REQUEST["page"] )
+class_D800.php:      $end_date = $_REQUEST["end_date"];
+class_D800.php:      if ( $_REQUEST["page"] )
+class_D800.php:      $page = $_REQUEST["page"];
+class_D800.php:      if ( $_REQUEST["shop_id"] )
+class_D800.php:         $option .= " and orders.shop_id = '" . $_REQUEST["shop_id"] . "'";
+class_DA00.php:      $start_date = $_REQUEST["start_date"];
+class_DA00.php:      $end_date = $_REQUEST["end_date"];
+class_DC00.php:      if ( $_REQUEST["page"] )
+class_DC00.php:      if ( $_REQUEST["page"] )
+class_DC00.php:      $page = $_REQUEST["page"];
+class_DC00.php:      if ( $_REQUEST["shop_id"] )
+class_DC00.php:         $option .= " and orders.shop_id = '" . $_REQUEST["shop_id"] . "'";
+class_DE00.php:	if (!$packno) $packno = $_REQUEST[packno];
+class_DE00.php:	if ($_REQUEST[ret] == "back")
+class_DE00.php:	$packno = $_REQUEST[packno];
+class_DG00.php:      $start_date = $_REQUEST["start_date"];
+class_DG00.php:      $end_date = $_REQUEST["end_date"];
+class_DG00.php:      if ( $_REQUEST["page"] )
+class_DG00.php:	$keyword = $_REQUEST["keyword"];
+class_DG00.php:	$page = $_REQUEST["page"];
+class_DG00.php:	$start_date = $_REQUEST["start_date"] ? $_REQUEST["start_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_DG00.php:	$end_date = $_REQUEST["end_date"] ? $_REQUEST["end_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_DG00.php:       foreach ( $_REQUEST as $key=>$value )
+class_DH00.php:      $page = $_REQUEST["page"];
+class_DI00.php:	$work_date = $_REQUEST[s_year]."-".$_REQUEST[s_mon]."-".$_REQUEST[s_day];
+class_DI00.php:	$seq = $_REQUEST[seq];
+class_DI00.php:	$status = $_REQUEST[status];
+class_DI00.php:	$work_date = $_REQUEST[work_date];
+class_DI00.php:	$seq = $_REQUEST[seq];
+class_DJ00.php:      $start_date = $_REQUEST["start_date"];
+class_DJ00.php:      $end_date = $_REQUEST["end_date"];
+class_DJ00.php:      if ( $_REQUEST["page"] )
+class_DJ00.php:	$keyword = $_REQUEST["keyword"];
+class_DJ00.php:	$page = $_REQUEST["page"];
+class_DJ00.php:	$start_date = $_REQUEST["start_date"] ? $_REQUEST["start_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_DJ00.php:	$end_date = $_REQUEST["end_date"] ? $_REQUEST["end_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_DJ00.php:        $supply_code = $_REQUEST["supply_code"];// 공급처
+class_DJ00.php:        $shop_id = $_REQUEST["shop_id"];        // 판매처
+class_DJ00.php:       foreach ( $_REQUEST as $key=>$value )
+class_DL00.php:	$order_no = $_REQUEST[order_no];
+class_DL00.php:	$order_subno = $_REQUEST[order_subno];
+class_DL00.php:	$product_no = $_REQUEST[product_no];
+class_DL00.php:	$trans_who = $_REQUEST[trans_who];
+class_DL00.php:	$zip = $_REQUEST[zip];
+class_DL00.php:	$recv_tel = $_REQUEST[recv_tel];
+class_DL00.php:	$recv_mobile = $_REQUEST[recv_mobile];
+class_DM00.php:	$seq = $_REQUEST[seq];
+class_DM00.php:	$recv_name = $_REQUEST[recv_name];
+class_DM00.php:	$recv_tel = $_REQUEST[recv_tel];
+class_DM00.php:	$recv_mobile = $_REQUEST[recv_mobile];
+class_DM00.php:	$recv_zip = $_REQUEST[recv_zip];
+class_DM00.php:	$recv_address = $_REQUEST[recv_address];
+class_DO00.php:      $page = $_REQUEST["page"];
+class_DQ00.php:      $end_date = $_REQUEST["end_date"];
+class_DQ00.php:       if ( $_REQUEST["page"] )
+class_DQ00.php:	$keyword = $_REQUEST["keyword"];
+class_DQ00.php:	$page = $_REQUEST["page"];
+class_DQ00.php:	//$start_date = $_REQUEST["start_date"] ? $_REQUEST["start_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_DQ00.php:	//$end_date = $_REQUEST["end_date"] ? $_REQUEST["end_date"] : strftime('%Y-%m-%d', strtotime('now'));
+class_DQ00.php:            $supply_code = $_REQUEST["supply_code"];// 공급처
+class_DQ00.php:        $shop_id = $_REQUEST["shop_id"];        // 판매처
+class_E100.php:        $end_date = $_REQUEST["end_date"];
+class_E100.php:        $link_url = base64_decode( $_REQUEST["link_url"] );
+class_E100.php:        $link_url = base64_decode( $_REQUEST["link_url"] );
+class_E100.php:        $link_url = base64_decode( $_REQUEST["link_url"] );
+class_E100.php:       $search_type = $_REQUEST[search_type];
+class_E100.php:       $keyword = $_REQUEST[keyword];
+class_E100.php:       $start_date = $_REQUEST[start_date];
+class_E100.php:       $end_date = $_REQUEST[end_date];
+class_E100.php:       $order_cs = $_REQUEST[order_cs];
+class_E100.php:       $shop_id = $_REQUEST[shop_id];
+class_E100.php:       $supply_id = $_REQUEST[supply_id];
+class_E100.php:       $page = $_REQUEST[page];
+class_E100.php:       $act = $_REQUEST[act];
+class_E100.php:	$order_seq = $_REQUEST[order_seq] ? $_REQUEST[order_seq] : $order_seq;
+class_E100.php:	$cs_type = $_REQUEST[cs_type] ? $_REQUEST[cs_type] : $cs_type;
+class_E100.php:	$cs_reason = $_REQUEST[cs_reason] ? $_REQUEST[cs_reason] : $cs_reason;
+class_E100.php:	$cs_result = $_REQUEST[cs_result] ? $_REQUEST[cs_result] : $cs_result;
+class_E100.php:	$content = $_REQUEST[content] ? $_REQUEST[content] : $content;
+class_E100.php:          $this->redirect("?template=E108&seq=$seq&link_url=" . $_REQUEST["link_url"]  );
+class_E100.php:          $link_url = base64_decode( $_REQUEST["link_url"] );
+class_E100.php:          $this->redirect("?template=E107&seq=$seq&link_url=" . $_REQUEST["link_url"]  );
+class_E100.php:          $this->redirect("?template=E106&seq=$seq&link_url=" . $_REQUEST["link_url"]  );
+class_E100.php:       if ( $_REQUEST["seq"] )
+class_E100.php:         $seq = $_REQUEST["seq"]; 
+class_E100.php:       if ( $_REQUEST["seq"] )
+class_E100.php:         $seq = $_REQUEST["seq"]; 
+class_E100.php:       $seq = $_REQUEST["seq"];
+class_E100.php:      if ( $_REQUEST["redirect_option"] )
+class_E100.php:         $redirect_option = $_REQUEST["redirect_option"];
+class_E100.php:      foreach ( $_REQUEST as $key=>$val )
+class_E100.php:      // if ( $_REQUEST["option_change"] )
+class_E100.php:      $query .= " where seq= '" . $_REQUEST["seq"] . "'";
+class_E100.php:      foreach ( $_REQUEST as $key=>$val )
+class_E100.php:      if ( $_REQUEST["option_change"] )
+class_E100.php:         $query .= ",options='" . $_REQUEST["options"] . "'";
+class_E100.php:      $query .= ", trans_price='" . $_REQUEST["trans_fee"] . "'";
+class_E100.php:	$sender = $_REQUEST[sender];
+class_E100.php:	$receiver = $_REQUEST[receiver];
+class_E100.php:	$message = $_REQUEST[message];
+class_E300.php:       $search_type = $_REQUEST[search_type];
+class_E300.php:       $keyword = $_REQUEST[keyword];
+class_E300.php:       $end_date = $_REQUEST[end_date];
+class_E300.php:       $order_cs = $_REQUEST[order_cs];
+class_E300.php:       $shop_id = $_REQUEST[shop_id];
+class_E300.php:       $supply_id = $_REQUEST[supply_id];
+class_E300.php:       $page = $_REQUEST[page];
+class_E300.php:       $act = $_REQUEST[act];
+class_E400.php:       $search_type = $_REQUEST[search_type];
+class_E400.php:       $keyword = $_REQUEST[keyword];
+class_E400.php:       $end_date = $_REQUEST[end_date];
+class_E400.php:       $order_cs = $_REQUEST[order_cs];
+class_E400.php:       $shop_id = $_REQUEST[shop_id];
+class_E400.php:       $supply_id = $_REQUEST[supply_id];
+class_E400.php:       $page = $_REQUEST[page];
+class_E400.php:       $act = $_REQUEST[act];
+class_E500.php:	foreach ( $_REQUEST as $key=>$val )
+class_E600.php:        $end_date = $_REQUEST["end_date"];
+class_E600.php:       $search_type = $_REQUEST[search_type];
+class_E600.php:       $keyword = $_REQUEST[keyword];
+class_E600.php:       $start_date = $_REQUEST[start_date];
+class_E600.php:       $end_date = $_REQUEST[end_date];
+class_E600.php:       $order_cs = $_REQUEST[order_cs];
+class_E600.php:       $shop_id = $_REQUEST[shop_id];
+class_E600.php:       $supply_id = $_REQUEST[supply_id];
+class_E600.php:       $page = $_REQUEST[page];
+class_E600.php:       $act = $_REQUEST[act];
+class_E700.php:        $end_date = $_REQUEST["end_date"];
+class_E700.php:        $link_url = base64_decode( $_REQUEST["link_url"] );
+class_E700.php:        $link_url = base64_decode( $_REQUEST["link_url"] );
+class_E700.php:        $link_url = base64_decode( $_REQUEST["link_url"] );
+class_E700.php:       $search_type = $_REQUEST[search_type];
+class_E700.php:       $keyword = $_REQUEST[keyword];
+class_E700.php:       $start_date = $_REQUEST[start_date];
+class_E700.php:       $end_date = $_REQUEST[end_date];
+class_E700.php:       $order_cs = $_REQUEST[order_cs];
+class_E700.php:       $shop_id = $_REQUEST[shop_id];
+class_E700.php:       $supply_id = $_REQUEST[supply_id];
+class_E700.php:       $page = $_REQUEST[page];
+class_E700.php:       $act = $_REQUEST[act];
+class_E700.php:	$order_seq = $_REQUEST[order_seq] ? $_REQUEST[order_seq] : $order_seq;
+class_E700.php:	$cs_type = $_REQUEST[cs_type] ? $_REQUEST[cs_type] : $cs_type;
+class_E700.php:	$cs_reason = $_REQUEST[cs_reason] ? $_REQUEST[cs_reason] : $cs_reason;
+class_E700.php:	$cs_result = $_REQUEST[cs_result] ? $_REQUEST[cs_result] : $cs_result;
+class_E700.php:	$content = $_REQUEST[content] ? $_REQUEST[content] : $content;
+class_E700.php:	$content = addslashes($_REQUEST[content]);
+class_E700.php:          $this->redirect("?template=E708&seq=$seq&link_url=" . $_REQUEST["link_url"]  );
+class_E700.php:          $link_url = base64_decode( $_REQUEST["link_url"] );
+class_E700.php:          $this->redirect("?template=E707&seq=$seq&link_url=" . $_REQUEST["link_url"]  );
+class_E700.php:          $this->redirect("?template=E706&seq=$seq&link_url=" . $_REQUEST["link_url"]  );
+class_E700.php:       if ( $_REQUEST["seq"] )
+class_E700.php:         $seq = $_REQUEST["seq"]; 
+class_E700.php:       if ( $_REQUEST["seq"] )
+class_E700.php:         $seq = $_REQUEST["seq"]; 
+class_E700.php:       $seq = $_REQUEST["seq"];
+class_E700.php:      if ( $_REQUEST["redirect_option"] )
+class_E700.php:         $redirect_option = $_REQUEST["redirect_option"];
+class_E700.php:      foreach ( $_REQUEST as $key=>$val )
+class_E700.php:      if ( $_REQUEST["option_change"] )
+class_E700.php:      $query .= " where seq= '" . $_REQUEST["seq"] . "'";
+class_E700.php:         $this->redirect ( $_REQUEST["link_url"] );
+class_E700.php:      foreach ( $_REQUEST as $key=>$val )
+class_E700.php:      if ( $_REQUEST["option_change"] )
+class_E700.php:         $query .= ",options='" . $_REQUEST["options"] . "'";
+class_E700.php:      $query .= ", trans_price='" . $_REQUEST["trans_fee"] . "'";
+class_E700.php:	$sender = $_REQUEST[sender];
+class_E700.php:	$receiver = $_REQUEST[receiver];
+class_E700.php:	$message = $_REQUEST[message];
+class_E800.php:       $search_type = $_REQUEST[search_type];
+class_E800.php:       $keyword = $_REQUEST[keyword];
+class_E800.php:       $end_date = $_REQUEST[end_date];
+class_E800.php:       $order_cs = $_REQUEST[order_cs];
+class_E800.php:       $shop_id = $_REQUEST[shop_id];
+class_E800.php:       $supply_id = $_REQUEST[supply_id];
+class_E800.php:       $page = $_REQUEST[page];
+class_E800.php:       $act = $_REQUEST[act];
+class_E900.bak:        $end_date = $_REQUEST["end_date"];
+class_E900.bak:        $end_date = $_REQUEST["end_date"];
+class_E900.bak:        $end_date = $_REQUEST["end_date"];
+class_E900.bak:        $end_date = $_REQUEST["end_date"];
+class_E900.bak:        $link_url = base64_decode( $_REQUEST["link_url"] );
+class_E900.bak:        $link_url = base64_decode( $_REQUEST["link_url"] );
+class_E900.bak:        $link_url = base64_decode( $_REQUEST["link_url"] );
+class_E900.bak:       $search_type = $_REQUEST[search_type];
+class_E900.bak:       $keyword = $_REQUEST[keyword];
+class_E900.bak:       $start_date = $_REQUEST[start_date];
+class_E900.bak:       $end_date = $_REQUEST[end_date];
+class_E900.bak:       $order_cs = $_REQUEST[order_cs];
+class_E900.bak:       $shop_id = $_REQUEST[shop_id];
+class_E900.bak:       $supply_id = $_REQUEST[supply_id];
+class_E900.bak:       $page = $_REQUEST[page];
+class_E900.bak:       $act = $_REQUEST[act];
+class_E900.bak:	$order_seq = $_REQUEST[order_seq] ? $_REQUEST[order_seq] : $order_seq;
+class_E900.bak:	$cs_type = $_REQUEST[cs_type] ? $_REQUEST[cs_type] : $cs_type;
+class_E900.bak:	$cs_reason = $_REQUEST[cs_reason] ? $_REQUEST[cs_reason] : $cs_reason;
+class_E900.bak:	$cs_result = $_REQUEST[cs_result] ? $_REQUEST[cs_result] : $cs_result;
+class_E900.bak:	$content = $_REQUEST[content] ? $_REQUEST[content] : $content;
+class_E900.bak:          $this->redirect("?template=E108&seq=$seq&link_url=" . $_REQUEST["link_url"]  );
+class_E900.bak:          $link_url = base64_decode( $_REQUEST["link_url"] );
+class_E900.bak:          $this->redirect("?template=E107&seq=$seq&link_url=" . $_REQUEST["link_url"]  );
+class_E900.bak:          $this->redirect("?template=E106&seq=$seq&link_url=" . $_REQUEST["link_url"]  );
+class_E900.bak:       if ( $_REQUEST["seq"] )
+class_E900.bak:         $seq = $_REQUEST["seq"]; 
+class_E900.bak:       $seq = $_REQUEST["seq"];
+class_E900.bak:      if ( $_REQUEST["redirect_option"] )
+class_E900.bak:         $redirect_option = $_REQUEST["redirect_option"];
+class_E900.bak:      foreach ( $_REQUEST as $key=>$val )
+class_E900.bak:      // if ( $_REQUEST["option_change"] )
+class_E900.bak:      foreach ( $_REQUEST as $key=>$val )
+class_E900.bak:      if ( $_REQUEST["option_change"] )
+class_E900.bak:         $query .= ",options='" . $_REQUEST["options"] . "'";
+class_E900.bak:      $query .= ", trans_price='" . $_REQUEST["trans_fee"] . "'";
+class_E900.bak:	$sender = $_REQUEST[sender];
+class_E900.bak:	$receiver = $_REQUEST[receiver];
+class_E900.bak:	$message = $_REQUEST[message];
+class_E900.php:        $end_date = $_REQUEST["end_date"];
+class_E900.php:        $end_date = $_REQUEST["end_date"];
+class_E900.php:        $end_date = $_REQUEST["end_date"];
+class_E900.php:        $end_date = $_REQUEST["end_date"];
+class_E900.php:        $link_url = base64_decode( $_REQUEST["link_url"] );
+class_E900.php:        $link_url = base64_decode( $_REQUEST["link_url"] );
+class_E900.php:        $link_url = base64_decode( $_REQUEST["link_url"] );
+class_E900.php:       $search_type = $_REQUEST[search_type];
+class_E900.php:       $keyword = $_REQUEST[keyword];
+class_E900.php:       $start_date = $_REQUEST[start_date];
+class_E900.php:       $end_date = $_REQUEST[end_date];
+class_E900.php:       $order_cs = $_REQUEST[order_cs];
+class_E900.php:       $shop_id = $_REQUEST[shop_id];
+class_E900.php:       $supply_id = $_REQUEST[supply_id];
+class_E900.php:       $page = $_REQUEST[page];
+class_E900.php:       $act = $_REQUEST[act];
+class_E900.php:	$order_seq = $_REQUEST[order_seq] ? $_REQUEST[order_seq] : $order_seq;
+class_E900.php:	$cs_type = $_REQUEST[cs_type] ? $_REQUEST[cs_type] : $cs_type;
+class_E900.php:	$cs_reason = $_REQUEST[cs_reason] ? $_REQUEST[cs_reason] : $cs_reason;
+class_E900.php:	$cs_result = $_REQUEST[cs_result] ? $_REQUEST[cs_result] : $cs_result;
+class_E900.php:	$content = $_REQUEST[content] ? $_REQUEST[content] : $content;
+class_E900.php:          $this->redirect("?template=E108&seq=$seq&link_url=" . $_REQUEST["link_url"]  );
+class_E900.php:          $link_url = base64_decode( $_REQUEST["link_url"] );
+class_E900.php:          $this->redirect("?template=E107&seq=$seq&link_url=" . $_REQUEST["link_url"]  );
+class_E900.php:          $this->redirect("?template=E106&seq=$seq&link_url=" . $_REQUEST["link_url"]  );
+class_E900.php:       if ( $_REQUEST["seq"] )
+class_E900.php:         $seq = $_REQUEST["seq"]; 
+class_E900.php:       $seq = $_REQUEST["seq"];
+class_E900.php:      if ( $_REQUEST["redirect_option"] )
+class_E900.php:         $redirect_option = $_REQUEST["redirect_option"];
+class_E900.php:      foreach ( $_REQUEST as $key=>$val )
+class_E900.php:      // if ( $_REQUEST["option_change"] )
+class_E900.php:      foreach ( $_REQUEST as $key=>$val )
+class_E900.php:      if ( $_REQUEST["option_change"] )
+class_E900.php:         $query .= ",options='" . $_REQUEST["options"] . "'";
+class_E900.php:      $query .= ", trans_price='" . $_REQUEST["trans_fee"] . "'";
+class_E900.php:	$sender = $_REQUEST[sender];
+class_E900.php:	$receiver = $_REQUEST[receiver];
+class_E900.php:	$message = $_REQUEST[message];
+class_F700.php:	$settle_year = $_REQUEST[year];
+class_F700.php:	$settle_month = $_REQUEST[month];
+class_F800.php:	$settle_amount = $_REQUEST[settle_amount];
+class_F800.php:	$settle_year = $_REQUEST[settle_year];
+class_F800.php:	$settle_month = $_REQUEST[settle_month];
+class_FC00.php:	$start_date = $_REQUEST[start_date];
+class_FC00.php:	$end_date = $_REQUEST[end_date];
+class_FC00.php:	$type = $_REQUEST[type];
+class_FC00.php:	$query_date = $_REQUEST[query_date];
+class_FC00.php:	$shop_id = $_REQUEST[shop_id];
+class_FC00.php:	$start_date = $_REQUEST[start_date];
+class_FC00.php:	$end_date = $_REQUEST[end_date];
+class_FC00.php:	$query_date = $_REQUEST[query_date];
+class_FC00.php:	$shop_id = $_REQUEST[shop_id];
+class_G100.php:      $shop_id = $_REQUEST[shop_id];
+class_G100.php:      $start_date = $_REQUEST[start_date];
+class_G100.php:      $end_date = $_REQUEST[end_date];
+class_G400.php:	$act = $_REQUEST[act];
+class_G400.php:	$type = $_REQUEST[type];
+class_G500.php:        $start_date = $_REQUEST["start_date"];
+class_G500.php:        $end_date = $_REQUEST["end_date"];
+class_G500.php:       $start_date = $_REQUEST["start_date"];
+class_G500.php:       $end_date = $_REQUEST["end_date"];
+class_GE00.php:      class_D::get_trans_info( $_REQUEST["seq"], &$trans_corp, &$trans_no );
+class_GE00.php:      $trans_corp = $_REQUEST["trans_corp"];
+class_GE00.php:      $trans_no = $_REQUEST["trans_no"];
+class_GE00.php:      $seq = $_REQUEST["seq"];
+class_GE00.php:      $trans_corp = $_REQUEST["trans_corp"];
+class_GE00.php:      $trans_no = $_REQUEST["trans_no"];
+class_GE00.php:      $seq = $_REQUEST["seq"];
+class_H200.php:	$writer = $_REQUEST[writer];
+class_H200.php:	$mobile = $_REQUEST[mobile];
+class_H200.php:	$email = $_REQUEST[email];
+class_H200.php:	$content = $_REQUEST[content];
+class_H200.php:	$subject = $_REQUEST[subject];
+class_H200.php:	$passwd = $_REQUEST[passwd];
+class_H300.php:	$no = $_REQUEST[no];
+class_H300.php:	$subno = $_REQUEST[subno];
+class_H500.php:	$no = $_REQUEST[no];
+class_H500.php:	$subno = $_REQUEST[subno];
+class_I100.php:      if ( $_REQUEST["page"] )
+class_I200.php:      if ( $_REQUEST["page"] )
+class_I300.php:      if ( $_REQUEST["page"] )
+class_I300.php:      if ( $_REQUEST["change_price"] )
+class_I300.php:      $org_enable_sale = $_REQUEST["org_enable_sale"];
+class_I300.php:      $enable_sale = $_REQUEST["enable_sale"];
+class_I400.php:	$product_id = $_REQUEST[product_id];
+class_I400.php:	$start_date = $_REQUEST[start_date];
+class_I400.php:	$alarm_qty = $_REQUEST[alarm_qty];
+class_I400.php:	$id_list = $_REQUEST[id_list];
+class_I400.php:	$start_date = $_REQUEST[start_date];
+class_I400.php:	$alarm_qty = $_REQUEST[alarm_qty];
+class_I400.php:	$product_id = $_REQUEST[product_id];
+class_I400.php:	$start_date = $_REQUEST[start_date];
+class_I400.php:	$alarm_qty = $_REQUEST[alarm_qty];
+class_I400.php:	$product_id = $_REQUEST[product_id];
+class_I500.php:	$product_id = $_REQUEST[product_id];
+class_I500.php:	$start_date = $_REQUEST[start_date];
+class_I500.php:	$type = $_REQUEST[type];
+class_I500.php:	$qty = $_REQUEST[qty];
+class_I500.php:	$memo = $_REQUEST[memo];
+class_I500.php:	$no = $_REQUEST[no];
+class_I500.php:	$product_id = $_REQUEST[product_id];
+class_I600.php:	$product_id = $_REQUEST[product_id];
+class_I600.php:	$start_date = $_REQUEST[start_date];
+class_I600.php:	$type = $_REQUEST[type];
+class_I600.php:	$qty = $_REQUEST[qty];
+class_I600.php:	$memo = $_REQUEST[memo];
+class_I600.php:	$no = $_REQUEST[no];
+class_I600.php:	$product_id = $_REQUEST[product_id];
+class_I700.php:	$id = $_REQUEST[id];
+class_I700.php:	$pack_list = $_REQUEST[pack_list];
+class_I800.php:	$id_list = $_REQUEST[id_list];
+class_I800.php:	$start_date = $_REQUEST[start_date];
+class_I800.php:	$alarm_qty = $_REQUEST[alarm_qty];
+class_I800.php:	$product_id = $_REQUEST[product_id];
+class_I800.php:	$start_date = $_REQUEST[start_date];
+class_I800.php:	$alarm_qty = $_REQUEST[alarm_qty];
+class_I800.php:	$product_id = $_REQUEST[id];
+class_I800.php:	$id_list = $_REQUEST[id_list];
+class_I800.php:	$no = $_REQUEST[no];
+class_I800.php:	$product_id = $_REQUEST[product_id];
+class_I900.php:    $act = $_REQUEST[act];
+class_I900.php:    $date_type = $_REQUEST[date_type];	
+class_I900.php:    $end_date = $_REQUEST[start_date];
+class_top.php:      $code = $_REQUEST["supply_code"] ? $_REQUEST["supply_code"] : $supply_code;
+class_top.php:       $stauts = $_REQUEST["status"];
+class_top.php:      foreach ( $_REQUEST as $key=>$val )
+class_top.php:         $target_id = $_REQUEST["shop_id"];
+class_top.php.20060220:      $code = $_REQUEST["supply_code"] ? $_REQUEST["supply_code"] : $supply_code;
+class_top.php.20060220:       $stauts = $_REQUEST["status"];
+class_top.php.20060220:      foreach ( $_REQUEST as $key=>$val )
+class_top.php.20060220:         $target_id = $_REQUEST["shop_id"];

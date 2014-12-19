@@ -1,0 +1,559 @@
+<?
+require_once "class_top.php";
+require_once "class_E.php";
+require_once "class_C.php";
+require_once "class_3pl.php";
+require_once "class_E900.php";
+require_once "class_order.php";
+require_once "class_file.php";
+require_once "class_product.php";
+require_once "class_cancelformat.php";
+require_once "class_ui.php";
+
+////////////////////////////////
+// class name: class_E800
+//
+class class_E800 extends class_top {
+
+    function canceled_list()
+    {
+	global $connect,$status, $start_date, $end_date, $shop_id;
+	$arr    = array();
+	$query = "select a.order_id, a.shop_id,a.order_name,b.cancel_date,a.status,a.seq,a.qty,a.product_id
+                    from orders a, auto_canceled_order b
+                   where a.seq = b.seq
+                     and b.cancel_date >= '$start_date 00:00:00'
+                     and b.cancel_date <= '$end_date 23:59:59' ";
+
+	if ( $shop_id )
+	    $query .= " and a.shop_id=$shop_id ";
+
+	if ( $status )
+	    $query .= " and a.status in ($status) ";
+
+	// $arr['query'] = $query;
+
+	$result = mysql_query( $query, $connect );
+	$obj = new class_product();
+
+	while ( $data = mysql_fetch_array( $result ) )
+	{
+	    $str_status = array( 1 => "접수", 7=>"송장입력", 8=>"배송" );
+            $p_info     = $obj->get_info( $data[product_id], "name" );
+
+	    $arr[] = array( 
+			 order_id   => $data[order_id]
+			,seq        => $data[seq]
+			,shop_id    => $data[shop_id]
+			,cancel_date=> $data[cancel_date]
+			,status     => iconv('cp949', 'utf-8', $str_status[$data[status]])
+			,qty        => $data[qty]
+			,product_name => iconv('cp949','utf-8', $p_info['name'])
+			,order_name => iconv('cp949','utf-8',$data[order_name])
+	    );
+	}
+	echo json_encode( $arr );
+    }
+
+    ///////////////////////////////////////////
+    function E806()
+    {
+	global $template;
+        global $connect, $shop_code;
+
+	$query = "select * from shopinfo 
+                   where shop_id%100 = $shop_code 
+                   order by shop_id";
+	$result = mysql_query( $query, $connect );
+
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+
+
+    function E800()
+    {
+	global $connect;
+	global $template;
+        global $start_date, $end_date, $keyword, $order_cs, $search_type;
+
+	$line_per_page = _line_per_page;
+        $link_url = "?" . $this->build_link_url();
+
+        if (!$start_date) $start_date = date('Y-m-d', strtotime('-2 day'));
+        $this->cs_list( &$total_rows, &$r_cs );
+
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+
+    function E801()
+    {
+	global $template;
+        global $connect;
+
+        $query = "select shop_id, shop_name from shopinfo";
+        $result = mysql_query ( $query, $connect );
+
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+
+    function E805()
+    {
+	global $template;
+        global $connect;
+
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+
+ 
+    function E804()
+    {
+	global $template;
+        global $connect;
+
+        $query = "select shop_id, shop_name from shopinfo";
+        $result = mysql_query ( $query, $connect );
+
+        if (!$start_date) $start_date = date('Y-m-d', strtotime('-2 day'));
+        $this->cs_list( &$total_rows, &$r_cs );
+
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+
+
+    function E802()
+    {
+	global $template;
+        global $connect;
+
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+
+    function E803()
+    {
+	global $template, $order_id;
+        global $connect;
+
+        $query = "select seq from orders where order_id='$order_id'";
+        $result = mysql_query ( $query, $connect );
+
+        $i = 0;
+        $is_multi = 0; // false
+        while ( $data = mysql_fetch_array ( $result ) )
+        {
+            $seq = $data[seq];
+            $i++;
+        }
+
+        if ( $i > 0 )
+            $is_multi = 1; // true
+
+   
+
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+
+    function del_cs_info()
+    {
+        global $template, $connect, $shop_id;
+
+	$query = "delete from shop_csinfo where shop_id='$shop_id'";
+        mysql_query ( $query );
+
+        $this->redirect( "template.htm?template=$template" );
+        // $this->closewin();
+        exit;
+    }
+
+    //////////////////////////////////////////////////////////
+    // add by jk for E805 popup
+    // 2006.6.23
+    // E805_upload.php 대신에 작업 함
+    function upload_cancel()
+    {
+	global $shop_id, $connect;
+
+	$obj = new class_file();
+	$arr_result = $obj->upload();
+	$arr_format = class_cancelformat::load_format( 1 );	// nojson option 1
+
+	$query = "delete from shop_csinfo where shop_id='$shop_id'";
+	mysql_query( $query, $connect );
+
+	for ( $i=0; $i < count($arr_result ); $i++)
+	{
+	    $_result = $arr_result[$i];
+
+	    $order_id     = $_result[ $arr_format[order_id]-1 ];
+	    $product_id   = $_result[ $arr_format[product_id]-1 ];
+	    $product_name = $_result[ $arr_format[product_name]-1 ];	        // 추가
+	    $order_name   = $_result[ $arr_format[order_name]-1 ];		// 추가
+	    $cancel_date  = $_result[ $arr_format[cancel_date]-1 ];		// 추가
+	    $qty          = $_result[ $arr_format[qty]-1 ];
+	    $reason       = $_result[ $arr_format[reason]-1 ];
+
+	    $sql = " insert into shop_csinfo set
+                     order_id      = '$order_id',     
+                     shop_id       = '$shop_id',
+		     cancel_date   = '$cancel_date',
+		     collect_date  = Now(),
+                     memo          = '$reason',
+                     product_name  = '".trim(strip_tags(addslashes($product_name)))."',
+                     order_name    = '$order_name',   
+                     qty           = '".trim($qty)."'";
+
+	    mysql_query( $sql, $connect );
+	}
+
+	$this->redirect("?template=E804&shop_id=$shop_id");
+	exit;
+    }
+    //////////////////////////////////////////////////////////
+    // add by sy.hwang for E802 popup
+    function upload()
+    {
+	global $template;
+	global $connect;
+
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . "_upload.php";
+
+	exit;
+    }
+
+    function delinfo()
+    {
+        global $connect, $template;
+
+        $query = "delete from shop_csinfo";
+        mysql_query ( $query, $connect );
+
+        $this->redirect("?template=$template");
+	exit;
+    }
+
+    //////////////////////////////////////////////////////////
+    //
+    // 취소 처리 적용
+    // Date: 2006.5.2 - jk.ryu
+    //
+    function cancel_apply()
+    {
+        global $template;
+        global $connect;
+
+        $transaction = $this->begin("취소적용");
+
+        //////////////////////////////////////////////////////
+        //
+	// 취소 테이블의 주문 상태를 조회 한다
+        //
+        $query    = "select * from shop_csinfo";
+        $result   = mysql_query ( $query, $connect );
+        $num_rows = mysql_num_rows ( $result );
+
+        $i = 0;
+        $j = 0;
+
+	if ( $_SESSION[USE_3PL] )
+ 	{
+	    $obj = new class_3pl();
+            $infos = array();  // 3pl용
+	}
+
+        while ( $data = mysql_fetch_array ( $result ) )
+        {
+           // 몇 번째 data를 처리 중인지 출력
+           $i++; 
+	   $str = " $i / $num_rows 번 데이터 처리중";
+           $this->disp_message ( $str ); 
+
+           // 주문의 상태 check 
+	   $query2  = "select seq, product_name, status, order_cs, pack from orders where order_id='$data[order_id]'";
+           $result2 = mysql_query ( $query2, $connect );
+
+           // row의 개수를 파악
+           $rows  = mysql_num_rows ( $result2 );
+
+           ///////////////////////////////////////////
+           // 검색된 결과가 없을 경우
+           // row의 개수가 1개일 경우
+           // row의 개수가 n개일 경우 
+           if ( $rows == 0 )
+           {
+             // echo "$query2 / $data[seq] / 미발주<br>";
+             // continue;
+           }
+           else if ( $rows > 0 ) // [debug] more than 0
+           {
+	        // 취소 중 합포가 있는 경우 check
+
+                // 원 주문에 대해서 취소 요청 함
+                while ( $data2 = mysql_fetch_array ( $result2 ) )
+	   	{
+		    $_seq = $data2[seq];
+
+		    if ( $this->cancel_apply_action ( $data2 ) )
+		    {
+		        $j++;
+		   	// 3pl을 사용하는 업체의 경우
+			if ( $_SESSION[USE_3PL] )
+			{
+			    $_info = class_order::get_order( $_seq );
+			    $infos[order_cs] = $_info[order_cs];      // 배송 후 교환 요청
+			    $obj->sync_infos( $infos, $_seq );
+			}
+		        // debug
+		        // 3pl을 사용하는 업체의 경우
+		        if ( $_SESSION[USE_3PL] )
+		        {
+			    $_info = class_order::get_order( $_seq );
+			    $infos[order_cs] = $_info[order_cs];      // 배송 후 교환 요청
+			    $obj->sync_infos( $infos, $_seq );
+		        }
+		    }
+
+		    // 삭제
+		    $query3 = "delete from shop_csinfo where seq='$data[seq]'";
+		    mysql_query ( $query3, $connect );
+		}
+	    }
+        }
+        echo "
+        <script>
+            hide_waiting();
+            alert( '총 " . $num_rows. "개 중 " . $j . "개가 취소 처리 되었습니다' )
+        </script>
+        ";
+
+	if ( _DOMAIN_ != "ckcompany" )
+            $this->redirect("template.htm?template=E300");
+        exit;
+    }
+
+    ////////////////////////////////////////////////////
+    //
+    // 실제 취소 처리를 하는 부분
+    // date: 2006.5.2 - jk.ryu
+    //
+    function cancel_apply_action( $data , $cs_msg = '')
+    {
+        global $connect;
+        global $order_seq, $cs_type, $cs_reason, $content;
+       
+        $cs_type   = "취소요청";
+        $cs_reason = "자동";
+
+	if ( $cs_msg )
+	    $content = $cs_msg;
+	else
+            $content   = addslashes ( "-판매처 취소 관리 CS처리-\n" . $data[cancel_why] . "\n" . $data[memo] );
+
+if ( $_SESSION[LOGIN_LEVEL] == 9 )
+{
+	echo "[root only] 취소 요청 / $data[seq] / $data[status] / $data[order_cs] / $content<br>";
+} 
+
+        $order_seq = $data[seq];
+        if ( $data[status] < 8 ) // 배송 전
+        {
+	    // 배송 보류 작업 한 번 더 함
+	    if ( !$data[hold] )
+                class_E900::set_hold2( $order_seq, 5);
+
+            switch ( $data[order_cs ] )
+            {
+                case "0":  // 정상
+                case "11": // 교환
+                    // class_E900::csinsert(0);
+                    class_E900::csinsert2( $order_seq, $content);
+                    class_E900::cancel_action( $order_seq );
+                    return true;
+                    break;
+            }
+
+        }
+        else  // 배송 후
+        {
+            switch ( $data[order_cs ] )
+            {
+                case "0":  // 정상
+		case "5":  // 교환
+		case "7":
+		case "13":
+            	    class_E900::csinsert2( $order_seq, $content);
+                    class_E900::cancel_action( $order_seq, 2 ); // 배송 후 취소 요청
+                    return true;
+		    break;
+                case "11": // 교환
+                    // echo " $order_seq / 배송 후 취소<br>";
+            	    class_E900::csinsert2( $order_seq, $content);
+                    class_E900::cancel_action( $order_seq );
+                    return true;
+                    break;
+            }
+        }
+
+        return false;
+    }
+
+    ////////////////////////////////////////////////////
+    // 
+    // message 출력
+    //
+    function disp_message( $str )
+    {
+	echo "<script language=javascript> 
+		  show_waiting() 
+		  show_txt ( '$str' );
+	       </script>";
+	flush();
+    }
+    //////////////////////////////////////////////////
+    // cs 정보의 최종 갱신일을 보여 준다
+    // jk.ryu : 2006.5.1
+    function get_lastinfodate( $shop_id )
+    {
+        global $connect;
+        $query = "select collect_date from shop_csinfo order by collect_date desc limit 1";
+        $result = mysql_query ( $query, $connect);
+        $data = mysql_fetch_array ( $result );
+        return $data[collect_date];
+    }
+
+
+    ///////////////////////////////////////////////////
+    // cs list 품절 주문 리스트 
+    // date : 2005.9.26
+    function cs_list( &$total_rows, &$result )
+    {
+       global $connect; 
+       global $start_date;
+
+       ///////////////////////////////////////
+       $search_type = $_REQUEST[search_type];
+       $keyword = $_REQUEST[keyword];
+       $end_date = $_REQUEST[end_date];
+       $order_cs = $_REQUEST[order_cs];
+       $shop_id = $_REQUEST[shop_id];
+       $supply_id = $_REQUEST[supply_id];
+       $page = $_REQUEST[page];
+       $act = $_REQUEST[act];
+       $line_per_page = _line_per_page;
+
+  //////////////////////////////////////////////
+  // 검색
+  if ( !$page )
+     $page = 1;
+  $starter = ($page-1) * $line_per_page;
+
+  $options = "";
+
+  /* 
+  // 검색키워드
+  if ($keyword)
+  {
+    if ($search_type == 1) // 주문자
+        $options .= "and a.order_name = '${keyword}'" ;
+    else if ($search_type == 2) // 주문번호
+        $options .= "and a.order_id = '${keyword}'" ;
+    else if ($search_type == 3) // 상품명
+        $options .= "and a.product_name like '%${keyword}%' " ;
+    else if ($search_type == 4) // 전화번호
+        $options .= "and (a.recv_tel = '$keyword' or a.recv_mobile = '$keyword') " ;
+  }
+
+  // 주문상태
+  if ($order_cs != '')
+    $options .= "and a.order_cs = '${order_cs}'" ;
+
+  // 판매처
+  if ($shop_id != '')
+    $options .= "and a.shop_id = '${shop_id}'" ;
+
+  // 공급처
+  if ($supply_id != '')
+    $options .= "and a.supply_id = '${supply_id}'" ;
+
+  */
+
+  /////////////////////////////////////////////////////
+  $sql = "select * from shop_csinfo ";
+  $count_sql = "select count(*) cnt from shop_csinfo ";
+
+  $limit_clause = " order by collect_date desc limit $starter, $line_per_page";
+
+  $query = $count_sql.$where_clause;
+  $result = mysql_query($query, $connect) or die(mysql_error());
+  $data = mysql_fetch_array ( $result );
+  $total_rows = $data[cnt];
+
+// echo $sql . $where_clause . $limit_clause;
+
+  $query = $sql.$where_clause.$limit_clause;
+  $result = mysql_query($sql.$where_clause.$limit_clause, $connect) or die(mysql_error());
+
+    }
+
+  function get_shop_name( $shop_id )
+  {
+     return class_C::get_shop_name ( $shop_id );
+  }
+
+  function get_cs_link( $order_id )
+  {
+      
+  } 
+}
+  ///////////////////////////////////////////
+  // auction 처리
+  class auction
+  {
+      function auction( $shop_id , $shop_name )
+      {
+?>
+          <tr bgcolor=ffffff>
+              <td width=70 align=center><img src=images/10001.gif></td>
+              <td width=70><?= $shop_name ?></td>
+              <td><?=  class_E800::get_lastinfodate( $shop_id ) ?></td>
+              <td width=80 align=center>
+                 <a href='javascript:auction("<?= $shop_id ?>")'><img src=http://www.ezadmin.co.kr/shopadmin/images/btn_auto_on.gif align=absmiddle></a>
+              </td>
+              <td width=80 align=center><img src=http://www.ezadmin.co.kr/shopadmin/images/btn_hand.gif></td>
+              <td width=50 align=center>
+                  <a href='javascript:del_cs_info("<?= $shop_id ?>")'>삭제</a>
+              </td>
+          </tr>
+<?
+      }
+  }
+
+  //////////////////////////////////////////
+  // gmarket 처리
+  class gmarket 
+  {
+      function gmarket( $shop_id, $shop_name )
+      {
+?>
+          <tr bgcolor=ffffff>
+              <td width=70 align=center><img src=images/10002.gif></td>
+              <td width=70><?= $shop_name ?></td>
+              <td>최종 정보</td>
+              <td width=80 align=center><img src=images/btn_auto.gif></td>
+              <td width=80 align=center>
+                  <a href='javascript:gmarket("<?= $shop_id ?>")')><img src=images/btn_hand_on.gif align=absmiddle></a>
+              </td>
+              <td width=50 align=center>
+                  <a href='javascript:del_cs_info("<?= $shop_id ?>")'>삭제</a></td>
+          </tr>
+
+<?
+      }
+  }
+?>

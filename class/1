@@ -1,0 +1,9 @@
+<?
+include_once "../lib/lib_common.php";
+require_once "class_statrule.php";
+
+$connect = db_connect();
+
+$obj = new class_statrule();
+
+?>

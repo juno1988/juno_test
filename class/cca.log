@@ -1,0 +1,31 @@
+2014/11/12 10:59:49전남 여수시 남면 우두로 227(남면 945-22)
+2014/11/12 11:01:16전남 여수시 남면 우두로 227(남면 945-22)
+2014/11/12 11:02:03전남 여수시 남면 우두로 227(남면 945-22)
+2014/11/12 11:02:14서울시 중구 다산로 150
+2014/11/12 11:03:29select *, if( bld_minor_no <> 0, 
+								concat(sd_name, '%', 
+									   sgg_name, '%', 
+								  	   road_name,  
+								  	   bld_major_no, '%',
+								  	   bld_minor_no, '%'),
+						        concat(sd_name, '%', 
+								  	   sgg_name, '%', 
+								  	   road_name,  
+								  	   bld_major_no, '%'))
+					        as full_road_name
+					from major_address 
+				   where zip_code='100450' 
+					 and '서울특별시중구다산로150'	like
+					  if ( bld_minor_no <> 0, 
+							 concat(sd_name, '%', 
+									sgg_name, '%', 
+									road_name,  
+									bld_major_no, '-',
+									bld_minor_no, '%'),
+							 concat(sd_name, '%', 
+                                    sgg_name, '%', 
+                                    road_name, '', 
+                                    bld_major_no, '%')
+					     )														 
+				   order by length( full_road_name) desc
+2014/11/12 11:03:29서울시 중구 다산로 150

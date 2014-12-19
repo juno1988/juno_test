@@ -1,0 +1,993 @@
+<?
+require_once "class_top.php";
+require_once "class_D.php";
+require_once "class_E.php";
+require "ExcelReader/reader.php";
+include_once "ExcelParserPro/excelparser.php";
+
+//require "lib/ez_trans_lib.php";
+
+class class_D500 extends class_top 
+{
+   var $g_order_id;
+   
+   function D500()
+   {
+      global $template;
+      $line_per_page = _line_per_page;
+
+      $link_url = "?" . $this->build_link_url();
+      $result = $this->count_list();
+
+      $master_code = substr( $template, 0,1);
+      include "template/" . $master_code ."/" . $template . ".htm";
+   }
+ 
+   function D501()
+   {
+      global $template;
+
+      $link_url = "?" . $this->build_link_url();
+
+      $result = $this->trans_today2( &$total_rows ); 
+
+      $master_code = substr( $template, 0,1);
+      include "template/" . $master_code ."/" . $template . ".htm";
+   }
+
+   //========================================
+   //
+   // date: 2007.5.30 - jk
+   // pos»Æ¿Œ«ÿº≠ ∏Ò∑œ ªË¡¶
+   //
+   function D502()
+   {
+      global $template;
+      $link_url = "?" . $this->build_link_url();
+      $result = $this->trans_today2( &$total_rows ); 
+      $master_code = substr( $template, 0,1);
+      include "template/" . $master_code ."/" . $template . ".htm";
+   }
+
+   //========================================
+   //
+   // date: 2007.5.30 - jk
+   // pos»Æ¿Œ«ÿº≠ ∏Ò∑œ ªË¡¶
+   //
+   function scan()
+   {
+	global $connect, $trans_no;
+	$query = "update trans_temp set status=7 where trans_no='$trans_no'";
+	$result = mysql_query ( $query, $connect );
+	$cnt = mysql_affected_rows();
+
+	$query = "select count(*) cnt, status from trans_temp group by status";
+	$result = mysql_query( $query, $connect );
+	
+	while ( $data = mysql_fetch_array ( $result ) )
+	{
+		if ( $data[status] == 7 ) 
+			$count_7 = $data[cnt];
+
+		$total_count = $total_count + $data[cnt];
+	}
+	
+	
+	if ( $cnt > 0 )
+		$result = "¡§ªÛ¿˚¿∏∑Œ ¿€æ˜ µ«æ˙Ω¿¥œ¥Ÿ";
+	else
+		$result = "¿ÃπÃ ∏∂≈∑ µ«æ˙∞≈≥™ º€¿Âπ¯»£ ¿ÃªÛ ¿‘¥œ¥ŸŸ";
+		
+	
+echo "
+{
+cnt:\" $cnt\",
+count_7:\" $count_7\",
+total_count:\" $total_count \",
+result:\" $result \"
+}
+";	
+   }
+    ///////////////////////////////////////////////////////////
+    // FILE UPLOAD
+    // date: 2005.10.31 modified by sy.hwang
+    function upload()
+    {
+	global $connect, $shop_id, $admin_file, $admin_file_name, $trans_corp, $default_format;
+
+	//$pattern = "/(\D+)/";
+	$pattern = "/[\'|\-]/";
+	$replacement = "";
+
+	// trans_temp∏¶ ∫Òøˆ¡ÿ¥Ÿ.
+	mysql_query("truncate table trans_temp", $connect) or die(mysql_error());
+
+	// sys_pos_transno øÕ sys_pos_seq∏¶ ±∏«—¥Ÿ
+	$sys_connect = sys_db_connect();
+	$query = "select * from sys_trans_index where trans_id='$trans_corp' and user_id='" . _DOMAIN_ . "'";
+	$result = mysql_query ( $query, $sys_connect );
+	$data = mysql_fetch_array( $result );
+
+	$sys_pos_transno = $data[position_transno];
+	$sys_pos_seq = $data[position_seq];
+
+	// echo $sys_pos_transno . "/" . $sys_pos_seq;
+
+	$excel_file = $_FILES['admin_file'];
+
+	if ($excel_file)
+	{
+	    $file_params = pathinfo($_FILES['admin_file']['name']);
+	    $file_ext = strtoupper($file_params["extension"]);
+	    if ($file_ext != "XLS" && $file_ext != "CSV" && $file_ext != "TXT") 
+	    {
+		fatal("¿ﬂ∏¯µ» ∆ƒ¿œ∆˜∏À¿‘¥œ¥Ÿ. ¡ˆø¯∞°¥…«— ∆ƒ¿œ∆˜∏À¿∫ (.xls | .csv | .txt)¿‘¥œ¥Ÿ.");
+	    }
+
+	    $upload_dir = _upload_dir;	// lib_common define
+	    $upload_file = "º€¿Â∆ƒ¿œ-" . date("Ymd_His"). "_." . $file_ext;
+
+	    if (!move_uploaded_file($_FILES['admin_file']['tmp_name'], $upload_dir.$upload_file))
+	    {
+		fatal("file upload failed111");
+	    }
+	    $excel_file = $upload_dir.$upload_file;
+	}
+
+	if ($excel_file == '') fatal("No file uploaded");
+
+        ////////////////////////////////////////////
+        // ±‚∫ª ∆˜∏‰¿∏∑Œ ø√∏± ∞ÊøÏ √≥∏Æ
+        // ¡÷πÆπ¯»£, º€¿Âπ¯»£ ∆˜∏‰¿« csv∆ƒ¿œ
+	if ( $default_format )
+        {
+	    $data = file($excel_file);
+	    $num_rows = count($data);
+
+
+	    for ($i = 1; $i < $num_rows; $i++)
+	    {
+	        $data_array = explode(",", $data[$i]);
+                // $trans_no   = trim( $data_array[1] );
+
+	        // trans_noø° ∞¯πÈ¿ª ªË¡¶ «‘
+	        $trans_no = preg_replace($pattern, $replacement, $data_array[1]);
+
+                $seq        = trim( $data_array[0] );
+
+		//================================
+		// for kgb ≈√πË
+		// date: 2007.5.1 - jk √ﬂ∞°
+ 		//
+                $seq = trim(str_replace("Order-No:", "", $seq));
+	        $trans_no = trim( str_replace( array("-","\r","\r\n","\n"), "", $trans_no) );
+
+		// trans_no¥¬ º˝¿⁄∏∏ ¿‘∑¬ µ«æÓæﬂ «‘
+                // ¿Ã∫Œ∫–¿∫ ππ¡ˆ? - 2007.12.28 - jk ø÷ æ»µ«¡ˆ?
+                $pattern = "/(\D+)/";
+                $replacement = "";
+                $trans_no = preg_replace($pattern, $replacement, $trans_no);
+                $seq      = preg_replace($pattern, $replacement, $seq);
+
+                $query = "insert into trans_temp set 
+	  		              seq = '$seq',
+	  	                      trans_corp = '$trans_corp', 
+		                      trans_no='$trans_no'";
+	        @mysql_query ($query, $connect);
+
+		$str = " $i / $num_rows π¯ µ•¿Ã≈Õ √≥∏Æ¡ﬂ";
+		echo "<script language=javascript> 
+			  show_waiting() 
+			  show_txt ( '$str' );
+		       </script>";
+		flush();
+	     }
+
+            $this->redirect( "?template=D501" );
+	    return;
+        } 
+
+	/////////////////////////////////////
+	switch ($file_ext)
+	{ 
+	    case "XLS" :
+		//////////////////////////////////////////
+		// Using ExcelParserPro
+		$exc = new ExcelFileParser("tmp/debug.log", ABC_ERROR);
+                $res = $exc->ParseFromFile($excel_file);
+                $ws = $exc->worksheet['data'][0];
+
+                $num_rows = $ws['max_row'];
+                $num_cols = $ws['max_col'];
+
+		break;
+	    case "CSV" :
+	    case "TXT" :
+		$data = file($excel_file);
+		$num_rows = count($data);
+		break;
+	}
+
+
+	if ($num_rows)
+	    mysql_query("truncate table trans_temp", $connect) or die(mysql_error());
+
+      ///////////////////////////////////////////
+      // ExcelReader¥¬ Ω√¿€¿Ã 1∫Œ≈Õ¿Œµ•.. TXT/CSV¥¬ Ω√¿€¿Ã 0∫Œ≈Õ¿”.
+// print "num row: $num_rows<br>";
+
+      for ($i = 0; $i <= $num_rows; $i++)
+      {
+	switch ($file_ext)
+	{ 
+	  case "XLS" :
+		$x = 1;	
+		for ($j = 0; $j <= $num_cols; $j++) 
+			$data_array[$j] = $this->parse_excel_ex($exc, $ws, $i, $j);
+
+	    break;
+	  case "CSV" :
+	    $x = 1;
+	    $data_array = explode(",", str_replace("\"","",$data[$i]));
+	    break;
+	  case "TXT" :
+	    $x = 1;
+	    $data_array = explode("\t", str_replace("\"","",$data[$i]));
+	    break;
+	}
+
+// print_r ( $data_array );
+//echo "<br>====================<br>";
+
+	if ( $sys_pos_transno != '' and  $sys_pos_seq != '' )
+	{
+		$trans_no = str_replace("-","",$data_array[ $sys_pos_transno - $x ]);
+		$seq = $data_array[ $sys_pos_seq - $x ];
+
+                $trans_no = preg_replace($pattern, $replacement, $trans_no);
+                $seq      = preg_replace($pattern, $replacement, $seq);
+
+//echo "transNO: $trans_no / seq: $seq <br>";
+
+	}
+	else
+	  switch ($trans_corp)
+	  {
+	  case "30095":	 // ªÁ∞°øÕ	// excel format 1∫Œ≈Õ Ω√¿€
+		if ( _DOMAIN_ == "caramel" 
+		or _DOMAIN_ == "yokkun"
+		or _DOMAIN_ == "mago"
+		or _DOMAIN_ == "peggy"
+		or _DOMAIN_ == "tne"
+		or _DOMAIN_ == "goview"
+		or _DOMAIN_ == "kdykiss"
+		or _DOMAIN_ == "sshin"
+		or _DOMAIN_ == "m9466"
+		or _DOMAIN_ == "lsy1115"
+		or _DOMAIN_ == "emenes"
+		or _DOMAIN_ == "bose5546"
+		or _DOMAIN_ == "ezadmin"
+		 )
+		{
+			// B: øÓº€¿Â , O: seq	
+			$trans_no = $data_array[2 - $x];  // B
+			$seq = $data_array[15 - $x];	     // O
+		}
+		else
+		{
+			// N: øÓº€¿Â , P: seq	
+			$trans_no = $data_array[3 - $x];  // C
+			$seq = $data_array[4 - $x];	   // D
+		}
+		break;
+          case "30079" : // «ˆ¥Î ≈√πË
+            // format¿∫ excel : 1∫Œ≈Õ Ω√¿€
+              $trans_no = $data_array[3-$x];  // C
+              $seq = $data_array[4-$x];	   // D
+            break;
+          case "30003": # cjgls 
+                if ( _DOMAIN_ == "kayoung"  or
+                     _DOMAIN_ == "color250"
+                   )
+                {
+		  // csv
+                  $trans_no = $data_array[2-$x]; // B
+                  $seq = $data_array[16-$x];     // P
+                }
+                else if ( _DOMAIN_ == "m9466" 
+                  or _DOMAIN_ == "ds153"
+                  or _DOMAIN_ == "cfkorea"
+                  or _DOMAIN_ == "imjlove"
+                  or _DOMAIN_ == "soocargo"
+                    )
+                {
+                  $trans_no = $data_array[2-$x];	// B
+                  $seq = $data_array[15-$x];		// O
+                }
+                else if ( _DOMAIN_ == "canapro" 
+                       or _DOMAIN_ == "rapa1196"
+                       or _DOMAIN_ == "kdykiss"
+                       or _DOMAIN_ == "lsy1115"
+                )
+                {
+                  $trans_no = $data_array[2 - $x];	// B
+                  $seq = $data_array[15 - $x];		// O
+                }
+		else if (  _DOMAIN_ == "eleven"
+                )
+                {
+                  $trans_no = $data_array[3 - $x];	// C
+                  $seq = $data_array[4 - $x];		// D
+                }
+		else if (  _DOMAIN_ == "daebo99"
+                )
+                {
+                  $trans_no = $data_array[2 - $x];	// B
+                  $seq = $data_array[13 - $x];		// M
+                }
+                else if ( _DOMAIN_ == "seongeun"
+		or _DOMAIN_ == "lbgjjang"
+                     )
+                {
+		  // for excel
+                  $trans_no = $data_array[2 - $x];	// B
+                  $seq = $data_array[16 - $x];	// P
+                }
+                else if ( _DOMAIN_ == "mambo74")
+                {
+                  $trans_no = $data_array[5 - $x];
+                  $seq = $data_array[6 - $x];
+                }
+                else
+                {
+                  $trans_no = $data_array[1-$x];
+                  $seq = $data_array[2-$x];
+                }
+                $trans_no = trim(str_replace("-", "", $trans_no)); 
+                break;
+          case "30074": # ∆Æ∂Û≥›
+                $trans_no = $data_array[6-$x];
+                $seq = $data_array[8-$x];
+
+                break;
+          case "30009": # kgb ≈√πË
+                if ( _DOMAIN_ == "cw2995" )
+                {
+		  // $trans_no = $this->parse_excel_ex($exc, $ws, $i, 5);  // F:5
+		  // $seq      = $this->parse_excel_ex($exc, $ws, $i, 7);	// H:7
+                  $trans_no = trim( $data_array[5-$x] );
+                  $seq = $data_array[7-$x];
+                }
+                else
+                {
+                  $trans_no = trim( $data_array[6-$x] );
+                  $seq = $data_array[8-$x];
+                }
+
+                $seq = trim(str_replace("Order-No:", "", $seq));
+                $trans_no = trim(str_replace("-", "", $trans_no)); 
+
+		break;
+
+          case "30026":	// ∑Œ¡®
+                if ( _DOMAIN_ == "younggun"  )
+                {
+                	$trans_no = $data_array[3-$x];	// C
+                	$seq = $data_array[5-$x];		// E
+                }
+		// excel
+		else if ( _DOMAIN_ == "honny" )
+                {
+                	$trans_no = $data_array[3-$x];	// C
+                	$seq = $data_array[5-$x];		// E
+                }
+                else
+                {
+			$trans_no = $data_array[2 - $x];   // B
+			$seq = $data_array[3 - $x];	   // C
+                }
+
+
+                break;
+
+	  case "30037":	# ªÔº∫≈√πË
+               
+                if ( _DOMAIN_ == "hanlin829"
+                 or _DOMAIN_ == "misogirl"  )
+                { 
+		    $trans_no_ex = $this->parse_excel_ex($exc, $ws, $i, 3); // D
+		    $seq_ex = $this->parse_excel_ex($exc, $ws, $i, 11);      // L
+		    //$trans_no_ex = $this->parse_excel_ex($exc, $ws, $i, 6); // G
+		    //$seq_ex = $this->parse_excel_ex($exc, $ws, $i, 7);      // H
+                }
+		else if ( _DOMAIN_ == "dmnet" 
+		or _DOMAIN_ == "ds153" 
+		or _DOMAIN_ == "ozen" 
+		or _DOMAIN_ == "ds" 
+		)
+		{
+			$trans_no_ex = trim( $data_array[1 - $x] ); 	// A
+			$seq_ex = trim( $data_array[2 - $x] ); 		// B
+		}
+                else
+                {
+		    $trans_no_ex = $this->parse_excel_ex($exc, $ws, $i, 6); // G
+		    $seq_ex = $this->parse_excel_ex($exc, $ws, $i, 7);      // H
+                }
+
+		$trans_no = $trans_no_ex;
+		$seq = $seq_ex;
+		break;
+
+	  case "30022":	# ¥Î«—≈ÎøÓ
+		$trans_no = $data_array[1-$x]; 		// A
+		$seq = $data_array[2-$x];		// B 
+// echo "trans_no: $trans_no / seq: $seq<br>";
+		break;
+
+	  case "30050":	# æ∆¡÷≈√πË
+                // ±π¡¶¿« ∞ÊøÏ¥¬ 
+                // A∞° øÓº€¿Â π¯»£
+                // B∞° ¡÷πÆπ¯»£
+                if ( _DOAMIN_ == "ezadmin")
+                {
+    		  $trans_no = trim( $data_array[3-$x] ); // C
+		  $seq = $data_array[2-$x]; // B
+                }
+                else if ( _DOMAIN_ == "femiculine" 
+                       or _DOMAIN_ == "femi"
+                       or _DOMAIN_ == "midan"
+                       or _DOMAIN_ == "sccompany"
+		)
+                {
+    		  $trans_no = trim( $data_array[2 - $x] ); // B
+		  $seq = $data_array[3 - $x]; // C
+                }
+                else if ( _DOMAIN_ == "mambo74" 
+                       or _DOMAIN_ == "femi1"
+                      )
+                {
+    		  $trans_no = trim( $data_array[4-$x] ); // D
+		  $seq = $data_array[5-$x]; // E
+                }
+                else
+                {
+                  // 8π¯¬∞ row∫Œ≈Õ ¿‘∑¬ Ω√¿€
+                  // if ( $i <= 6 ) break;
+                
+
+    		  $trans_no = trim( $data_array[1-$x] ); // A
+		  $trans_no = str_replace("-", "", $trans_no);
+		  $seq = $data_array[2-$x]; // B
+
+                }
+
+                break;         
+	  case "30094":	# æ∆¡÷≈√πË
+                // whales¥¬ ∆˜∏‰¿Ã ¥Ÿ∏£≥ﬂ..
+		if ( _DOMAIN_ == "cntcorp" or _DOMAIN_ == "ezadmin" )
+		{
+			$trans_no = $data_array[1-$x]; // A
+			$order_no = $data_array[2-$x]; // B // ¡÷πÆ π¯»£
+		}
+		else
+		{
+			$trans_no = $data_array[2-$x]; // B
+			$order_no = $data_array[3-$x]; // C
+		}
+
+		$seq = trim(str_replace("[1]", "", $order_no));
+		$trans_no = trim(str_replace("-", "", $trans_no));
+
+		break;
+
+	  case "30084":	# »—πÃ∏Æ≈√πË
+		if ( _DOMAIN_ == "midan" )
+		{
+			$trans_no = $data_array[2-$x];  // B
+			$seq = $data_array[7-$x];	// G .. e∑Œ ∫Ø∞Ê 2007.4.2 - jk
+		}
+		else if ( _DOMAIN_ == "sccompany" 
+			or _DOMAIN_ == "piglet177" 
+			or _DOMAIN_ == "ezadmin" )
+		{
+			$trans_no = $data_array[2-$x];  // B
+			$seq = $data_array[7-$x];	// G .. e∑Œ ∫Ø∞Ê 2007.4.2 - jk
+		}
+		else
+		{
+			$trans_no = $data_array[5-$x];  // E
+			$seq = $data_array[6-$x];	// F
+		}
+		break;
+
+	  case "30078":	#  «—¡¯≈√πË
+		if ( _DOMAIN_ == "younggun" )
+		{
+			$trans_no = trim( $data_array[3-$x] ); 
+			$seq = $data_array[5-$x];
+		}
+		else
+		{
+			$trans_no = trim( $data_array[2-$x] ); 
+			$seq = $data_array[13-$x];
+		}
+
+		// $seq_ex = $this->parse_excel_ex($exc, $ws, $i, 4);
+
+		$seq = str_replace("?", "", $seq);
+		break;
+	  case "30057":	# øª∑ŒøÏ 
+	  case "30090":	# øª∑ŒøÏ 
+		$trans_no = $data_array[2-$x]; // B
+		$seq = $data_array[3-$x];		// C
+		$trans_no= str_replace("-", "", $trans_no);
+		$seq = str_replace("?", "", $seq);
+		break;
+	  case "30062":	# øÏ√º±π 
+		if ( _DOMAIN_ == "nomsjy" )
+		{
+			$trans_no = $data_array[1-$x];  // A
+		    	$seq = $data_array[21-$x];	             // R -> U∑Œ ∫Ø∞Ê 2007.2.28
+		}
+		else
+		{
+			// xls∑Œ µÓ∑œ
+			// 6π¯¬∞ row∫Œ≈Õ ¿‘∑¬ Ω√¿€
+			if ( $i <= 5 ) break;
+
+			$trans_no = trim( $data_array[2-$x] );  // B
+
+//print_r ( $data_array );
+//exit;
+
+			if ( _DOMAIN_ == "biashop" or _DOMAIN_ == "jyms" or _DOMAIN_ == "ds153")
+			    $seq = $data_array[25-$x];
+			else if ( _DOMAIN_ == "cunsung" )
+			    $seq = $data_array[13-$x];	// 22ø°º≠ 13¿∏∑Œ ∫Ø∞Ê 2006.8.30
+			else // ninamall
+			    $seq = $data_array[24-$x];
+		}
+		break;
+	}
+
+	// seq∞™¿Ã æ¯¿∏∏È ∞«≥  ∂⁄¥Ÿ
+	//if ( $seq == 0 )
+	//	continue;
+
+	//////////////////////////////////
+        $trans_no = preg_replace($pattern, $replacement, $trans_no);
+        $seq      = preg_replace($pattern, $replacement, $seq);
+
+	//if ( $trans_no != "" && !preg_match("/([\x80-\xFF][\x01-\xFF])+/", $trans_no)) 
+	if ( $seq != 0 and $trans_no != '')
+	{
+	  $query = "insert into trans_temp set 
+			seq = '$seq',
+		trans_corp = '$trans_corp', 
+		trans_no='$trans_no'";
+
+debug ( $query );
+//echo "<br>";
+//echo $query;
+//echo "<br>";
+
+	  @mysql_query ($query, $connect);
+
+         $str = " $j / $num_rows π¯ µ•¿Ã≈Õ √≥∏Æ¡ﬂ";
+         echo "<script language=javascript> 
+                  show_waiting() 
+                  show_txt ( '$str' );
+               </script>";
+         flush();
+	}
+      }
+
+      // file ªË¡¶
+      // unlink( $excel_file );
+
+      //if ( _DOMAIN_ != "ds" )
+      		$this->redirect( "?template=D501" );
+      exit;
+    }
+
+    ////////////////////////////////////
+    // USING ExcelParserPro 4.4
+    function uc2html($str) {
+	$ret = '';
+	for( $i=0; $i<strlen($str)/2; $i++ ) {
+		$charcode = ord($str[$i*2])+256*ord($str[$i*2+1]);
+		$ret .= '&#'.$charcode;
+	}
+	return $ret;
+    }
+
+    ////////////////////////////////////
+    // USING ExcelParserPro 4.4
+    // √ππ¯¬∞ CELL : (0,0)∫Œ≈Õ Ω√¿€
+    function parse_excel_ex($exc, $ws, $row, $col)
+    {
+	$data = $ws['cell'][$row][$col];
+
+	if ($data['type'] == 0)
+	{
+	    $ind = $data['data'];
+	    if ($exc->sst['unicode'][$ind])
+	        $str = $this->uc2html($exc->sst['data'][$ind]);
+	    else
+	        $str = $exc->sst['data'][$ind];
+	    return $str;
+	}
+	else if ($data['type'] == 3)
+	{
+	    list($month,$day,$year) = explode(".", $data[data]);
+	    return "20".$year."-".$month."-".$day;
+	}
+	else
+	    return $data[data];
+    }
+
+   //////////////////////////////////////////////////////////
+   // º€¿Â æ˜∑ŒµÂ »Æ¿Œ »ƒ Ω«¡¶∑Œ ¿‘∑¬
+   // date: 2005.9.1
+   function upload_confirm()
+   {
+      global $connect, $status;
+
+      $transaction = $this->begin("º€¿Â¿‘∑¬");
+
+      $query = "select * from trans_temp";
+      $result = mysql_query ( $query, $connect );
+      $max = mysql_num_rows( $result );
+ 
+      $i = 0; 
+      $fail_count = 0;
+      while ( $data = mysql_fetch_array ( $result ) )
+      {
+	echo "trans: $data[trans_no] <br>";
+	$trans_no = str_replace( array("\t","\w", "\r","\n"), "", $data[trans_no] );
+         // º€¿Â π¯»£∞° æ¯¥¬ ∞ÊøÏ pass..
+         if ( $trans_no == '' )
+	 {
+	     $fail_count++;
+	     continue;
+	 }
+
+
+         $i++;
+         $query = "update orders 
+                      set trans_corp = '$data[trans_corp]',
+                          trans_no = '$trans_no',
+                          trans_date = Now(),";
+
+	//
+        // πËº€øœ∑·∑Œ µπ∏Æ¥¬ ∞ÊøÏøÕ º€¿Â ¿‘∑¬¿∏∑Œ µπ∏Æ¥¬ ∞ÊøÏ∞° ¿÷¿Ω
+	//
+        if ( $status )
+        {
+		//========================================
+		// πÃπËº€ »Æ¿Œ ¿€æ˜¿ª Ω««‡«— ∞ÊøÏ∂Û∏È
+		// ªÛ≈¬¥¬ 7¿Ã µ 
+		// date: 2007.5.30 - jk
+		if ( $data[status] == 7 )
+			$status = 7;
+		else
+			$status = 8;
+
+	     	$query .= " status =$status, trans_date_pos=Now()";
+
+		if ( _DOMAIN_ == "yonbang" )
+			debug ( $query . $query1 );
+
+		$query1 = " where seq = '$data[seq]' and order_cs not in ( 1,2,3,4,12)";
+         	mysql_query ( $query . $query1, $connect );                  
+
+		// «’∆˜∞« √≥∏Æ ∑Œ¡˜
+         	$query1 = " where pack='$data[seq]' and order_cs not in ( 1,2,3,4,12)";
+		if ( $data[seq] > 0 )
+         	    mysql_query ( $query . $query1, $connect );                  
+
+         	$query1 = " where pack='-$data[seq]' and order_cs not in ( 1,2,3,4,12)";
+		if ( $data[seq] > 0 )
+         	    mysql_query ( $query . $query1, $connect );                  
+        }
+        else
+	{
+	     	$query .= " status = 7 ";
+
+		if ( _DOMAIN_ == "yonbang" )
+			debug ( $query . $query1 );
+
+         	$query1 = " where seq = '$data[seq]' and ( trans_no = 0 or trans_no is null )";
+         	mysql_query ( $query . $query1, $connect );                  
+
+		// «’∆˜ π¯»£∞° ¥Ÿ∏• ∞ÊøÏµµ ¿÷¿ª ºˆ ¿÷¿Ω
+		// √Îº“Ω√ π¯»£ ∫Ø∞Êµ 
+		// 2009.1.19 - jk
+		// «’∆˜π¯»£∞° µø¿œ«—¡ˆ check
+		$_query = "select seq,pack from orders where seq=$data[seq]";	
+		$_result = mysql_query( $_query, $connect );
+		$data   = mysql_fetch_array( $_result );	
+	
+		// «’∆˜¿œ ∞ÊøÏ∏∏ √≥∏Æ
+		if ( $data[pack] )
+		{
+		    $pack = $data[pack];
+		
+		    // «’∆˜ √≥∏Æ ∑Œ¡˜
+         	    $query1 = " where pack='$pack' and ( trans_no = 0 or trans_no is null )";
+		    if ( $data[seq] > 0 )
+         	        mysql_query ( $query . $query1, $connect );                  
+    
+         	    $query1 = " where pack='-$pack' and ( trans_no = 0 or trans_no is null )";
+		    if ( $data[seq] > 0 )
+         	        mysql_query ( $query . $query1, $connect );                  
+		}
+	}
+
+	//////////////////////////////////////
+	// date: 2008.4.28 - jk
+	// πÃº€∞« √≥∏Æ ∑Œ¡˜ √ﬂ∞°
+	$query = "update notyet_deliv 
+                     set trans_corp = '$data[trans_corp]',
+                         trans_no   = '$trans_no',
+                         trans_date = Now(),
+			 status     = 7
+                   where pack=$data[seq]";
+        @mysql_query ( $query, $connect );                  
+
+	 //////////////////////////////////////
+         $str = " $i / $max π¯ µ•¿Ã≈Õ √≥∏Æ¡ﬂ";
+         echo "<script language=javascript> 
+                  show_waiting() 
+                  show_txt ( '$str' );
+               </script>";
+         flush();
+      }
+      $this->end( $transaction );
+
+      $this->jsAlert( $i . "∞≥¿« Data∞° ¿‘∑¬µ«æ˙Ω¿¥œ¥Ÿ Ω«∆– ∞≥ºˆ( $fail_count)");
+      $this->redirect ( "?template=D500" );
+   }
+
+   // º€¿Â πÃ¿‘∑¬ count
+   function count_list()
+   {
+      global $connect;
+      $query = "select order_date, date_format(collect_date,'%Y-%m-%d') collect_date, count(*) cnt
+                from orders 
+                where trans_no is null 
+                  and status in (1,2,11)
+                  and order_cs in ( 0, 5, 11,9,10 )";
+       
+      if ( !$_SESSION[LOGIN_LEVEL] ) 
+          $query .= " and supply_id = '". $_SESSION[LOGIN_CODE] . "'";      
+
+      $query .= " group by order_date, date_format(collect_date,'%Y-%m-%d')";
+
+//if ( _DOMAIN_ == "bose5546" )
+//	echo $query;
+
+      $result = mysql_query ( $query, $connect );
+      return $result;
+   }
+
+   //////////////////////////////////////////////////////
+   // ±›¿œ º€¿Â¿‘∑¬«— ∞·∞˙
+   function trans_today2 ( &$total_rows )
+   {
+      global $connect;
+
+      $query_cnt = "select count(*) as cnt from trans_temp";
+      $result = mysql_query ( $query_cnt, $connect);
+      $data = mysql_fetch_array ( $result );
+      $total_rows = $data[cnt];
+ 
+      ////////////////////////////////////////////////////////////////
+      $query = "select * from trans_temp limit 0, 5";
+ 
+      $result = mysql_query ( $query, $connect );
+      
+      return $result;
+   }
+
+
+   //////////////////////////////////////////////////////
+   // ±›¿œ º€¿Â¿‘∑¬«— ∞·∞˙
+   function trans_today ( &$total_rows )
+   {
+      global $connect;
+      global $page;
+
+      $line_per_page = _line_per_page;
+      $page = $_REQUEST["page"];
+      $today= date('Ymd', strtotime("now"));
+
+      if ( !$page ) $page = 1;
+      $start = ( $page - 1 ) * 20;
+
+      $query_cnt = "select count(*) as cnt from orders where trans_date > '$today'";
+      $result = mysql_query ( $query_cnt, $connect);
+      $data = mysql_fetch_array ( $result );
+      $total_rows = $data[cnt];
+ 
+      ////////////////////////////////////////////////////////////////
+      $query = "select *, date_format( trans_date, '%Y-%m-%d') trans_date 
+                  from orders , shopinfo
+                 where orders.shop_id = shopinfo.shop_id
+                   and trans_date > '$today'
+                 order by order_date desc
+                 limit $start, $line_per_page";
+ 
+      $result = mysql_query ( $query, $connect );
+      
+      return $result;
+   }
+
+
+   function write ( $datas, $num_rows , &$filename)
+   {
+       global $shop_id;
+
+       // ∞·∞˙∏¶ write«“ ªı∑ŒøÓ data∏¶ open
+       $filename = $_SESSION["LOGIN_ID"] . $shop_id . ".csv";
+       $saveTarget = _save_dir . $filename;
+       $handle = fopen ($saveTarget, "w");
+
+       // ∞·∞˙∏¶ ¿˙¿Â
+       $start_index = $this->start_index ? $this->start_index : 0;
+       for ( $i = $start_index; $i <= $num_rows; $i++ )
+       {
+            switch ( $this->type)
+            {
+               // excel¿« √≥∏Æ
+               case "xls": 
+                  $j = $i + 1; // excel reader¿« Ω√¿€¿∫ 1∫Œ≈Õ
+                  $data = $datas->sheets[0]['cells'][$j];
+                  $buffer = $this->parse_data ( $data, $i );
+               break;
+               case "tab":
+                  $data = $datas[$i];
+                  $data = split ( "\t", $data );
+                  $buffer = $this->parse_data ( $data,$i );
+               break;
+               case "csv":
+                  $data = $datas[$i];
+                  $data = split ( ",", $data );
+                  $buffer = $this->parse_data ( $data, $i );
+               break;
+            }
+
+            ///////////////////////////////////////o /
+            // ∞™¿Ã ¿÷¿ª∂ß∏∏ ¿˙¿Â«‘
+            if ( $buffer )
+               fwrite($handle, $buffer . "\n");
+       }
+
+       // file handle close
+       fclose($handle);
+   }
+
+   // order_subid∏¶ ∞°¡Æø¿¥¬ ∞ËªÍ¿Ã ¿÷æÓæﬂ «‘ 
+   function parse_data ( $data , $no)
+   {
+      $order_id = $data[$this->order_id];
+      $order_subid = 1;
+
+      // πËº€¡§∫∏∏¶ ∞°¡Æø¬¥Ÿ.
+      $this->get_transinfo ( $order_id, $order_subid, &$trans_corp, &$trans_no );
+
+      $column_count = count ( $data );
+      $end_index = $column_count;
+      $start_index = 0;
+
+      if ( $this->type == "xls" )
+      {
+         $start_index = 1;
+         $end_index = $column_count + 1;
+      }
+
+      $rep = array(",", "\n", "\r");
+
+      // same ¿Œ¡ˆ diff¿Œ¡ˆ »Æ¿Œ «‘     
+      if ( $this->data_type == "diff" )
+      {
+          $start_index = 0;
+          $end_index = count( $this->data_format );
+
+          if ( $this->type == "xls" )
+             $end_index++;
+
+          // ∞∞¿∫ ∞ÊøÏ
+          for ( $i = $start_index; $i < $end_index; $i++ )
+          {
+               // ¿œ∑√ π¯»£∞° ø¿¥¬ ∞ÊøÏ∞° ¿÷¿Ω gseshop
+            if ( $this->data_format[$i] == "No")
+               $str .= $no;
+            else if ( $this->data_format[$i] == "trans_no")
+               $str .= $trans_no;
+            else if ( $this->data_format[$i] == "trans_corp")
+               $str .= $trans_corp;
+            else if ( $this->data_format[$i] == "check")
+               $str .= "v";
+            else if ( $i == $this->order_id)
+               $str .= "'" . $data[$i];
+            else
+               $str .= str_replace( $rep,"",$data[$this->data_format[$i]] );
+
+            if ( $i != $end_index - 1 )
+               $str .= ",";
+         }        
+      } 
+      else
+      {
+         if ( $this->type == "xls" )
+            $end_index++;
+
+         // ∞∞¿∫ ∞ÊøÏ
+         // ±‚¡ÿ¿∫ 1∫Œ≈Õ
+         for ( $i = $start_index; $i < $end_index; $i++ )
+         {
+            if ( $i == $this->trans_no )
+               $str .= $trans_no;
+            else if ( $i == $this->trans_corp )
+               $str .= $trans_corp;
+            else if ( $i == $this->order_id)
+               $str .= "'" . $data[$i];
+            else 
+            {
+               $str .= str_replace( $rep,"",$data[$i] );
+            }
+
+            if ( $i != $end_index - 1)
+               $str .= ",";
+         }        
+      }
+
+      return $str;
+   } 
+
+   function get_transinfo ( $order_id, $order_subid, &$trans_corp, &$trans_no )
+   {
+      global $connect;
+      $query = "select trans_no, trans_corp from orders where order_id='$order_id' and  order_subid='$order_subid'";
+      $result = mysql_query ( $query, $connect );
+      $data = mysql_fetch_array ( $result );
+
+      $trans_corp = $data[trans_corp];
+      $trans_no = $data[trans_no];
+
+      if ( $this->debug == "on" )
+      {
+         $trans_corp = "≈‰¿Œ≈√πË";
+         $trans_no = "123-123-123";
+      }
+
+   }
+
+
+   //////////////////////////////////////////////////////////////////////
+
+   function download()
+   {
+      global $saveTarget;
+
+      if (is_file($saveTarget)) { 
+          $fp = fopen($saveTarget, "r");   
+          fpassthru($fp);  
+      } else {
+          echo "can not open it ";
+      }
+      
+      ////////////////////////////////////// 
+      // file close and delete it 
+      fclose($fp);
+      unlink($saveTarget);
+
+      exit; 
+   }
+
+
+}
+
+?>

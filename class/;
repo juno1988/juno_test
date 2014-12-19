@@ -1,0 +1,2375 @@
+<?
+require_once "class_top.php";
+require_once "class_E.php";
+require_once "class_C.php";
+require_once "class_D.php";
+require_once "class_takeback.php";
+require_once "class_product.php";
+
+////////////////////////////////
+// class name: class_DR00
+//
+class class_DR00 extends class_top {
+
+  var $max_product = 0;
+  var $min_product = 0;	// date: 2007-7-11 추가
+  var $m_order = 1;	// 순서
+  var $m_star_refund_count = 0;	// 순서
+  var $m_gift_count = 0;	// 순서
+
+  function DR00()
+  {
+	global $connect;
+	global $template, $page;
+	global $start_date, $end_date, $confirm;
+
+	if (!$start_date) $start_date = date('Y-m-d', strtotime('-60 day'));
+	if (!$end_date)   $end_date = date('Y-m-d');
+
+	$master_code = substr( $template, 0,1);
+	include "template/" . $master_code ."/" . $template . ".htm";
+  }
+
+  function confirm()
+  {
+	global $template, $page;
+	global $connect, $trans_who, $shop_id, $supply_code, $status, $confirm;
+	$status_list = "0,11,9,5,7,13";
+
+        if ( $status == 1 ) // 정상
+                $status_list = "0,7";
+        elseif ( $status == 2 ) // 교환
+                $status_list = "5,9,11,13";
+
+	$query = "update orders set download_date = Now() where status in (1,2,11) and order_cs in ( $status_list ) ";
+	
+	if ( $shop_id )
+		$query .= " and shop_id=$shop_id ";
+
+	if ( $supply_code )
+		$query .= " and supply_id=$supply_code";
+
+	if ( $trans_who )
+		$query .= " and trans_who='$trans_who'";
+	
+	if ( $confirm )
+		$query .= " and download_date is not null ";
+
+	mysql_query ( $query, $connect );
+
+	$master_code = substr( $template, 0,1);
+	include "template/" . $master_code ."/" . $template . ".htm";
+  }
+
+  // 미송건 카운트
+  // date: 2008.4.24 - jk
+  function notyet_count()
+  {
+    global $connect;
+    $query = "select count(*) cnt
+                from notyet_deliv a, orders b
+               where a.seq = b.seq
+                 and a.status in (1,2,11)
+                 and b.order_cs not in (1,2,3,4,12) group by a.pack";
+
+    $result = mysql_query( $query, $connect );
+    echo mysql_num_rows( $result );
+  }
+
+  function get_count( $_key='' )
+  {
+	global $connect, $trans_who, $shop_id, $supply_code, $status, $confirm, $warehouse, $key;
+	$key = $_key ? $_key : $key;	
+	$trans_who = iconv("UTF-8", "CP949", $trans_who);
+
+	$status_list = "1,2,11";
+	$cs_list= "0,11,9,5,7,13";
+
+        if ( $status == 1 ) // 정상
+	{
+	    $status_list = "1,11";
+            $cs_list     = "0";
+	}
+        elseif ( $status == 2 ) // 교환
+	{
+            $status_list = "1,11";
+            $cs_list     = "11,5,7,13,6,8";
+	}
+
+	switch( $warehouse )
+	{
+		case "A":
+			$query = "select count(a.seq) cnt 
+				    from tbl_print_enable a left join orders b using (seq) 
+				   where ";
+		break;	
+		case "C":
+		case "K":
+		case "P":
+			$query = "select count(a.seq) cnt 
+				    from tbl_print_enable a left join orders b using (seq) 
+				   where a.warehouse = '$warehouse' and ";
+		break;
+		default: 
+			$query = "select count(*) cnt from orders b where ";
+		break;
+	}
+
+	//////////////////////////////////
+        if ( $status == 1 ) // 정상
+        {
+            $status_list = "0,11,5,7,13,6,8";
+            $query .= " status in (1,11) 
+                        and order_cs in ( $status_list ) ";
+        }
+        elseif ( $status == 2 ) // 교환
+        {
+            $status_list = "5,9,11,13";
+            $query .= " status in (1,2,11) 
+                        and order_cs in ( $status_list ) ";
+        }
+        elseif ( $status == 4 ) // 교환요청
+        {
+            $query .= " status = 2 and order_cs = 0 ";
+        }
+        else
+            $query .= " status in (1,2,11) and order_cs in ( 0,11,9,5,7,13 ) ";
+
+
+	/////////////////////////////
+	switch ( $key )
+	{
+	// 2008.7.23 보류건을 구분해서 카운트하지 않음
+	    case "common" :	// 일반 개수
+	        //$query .= " and pack is NULL and hold=0";
+	        $query .= " and pack is NULL";
+		break;
+	    case "pack" :	// 합포 개수
+		//$query .= " and b.seq=b.pack and hold=0";
+		$query .= " and b.seq=b.pack";
+		break;
+	    case "hold" :	// 합포 개수
+	        $query .= " and b.hold > 0 and (b.seq=b.pack or b.pack='' or b.pack is null)";
+	   //echo $query;
+		break;
+	} 
+
+	if ( $shop_id )
+		$query .= " and shop_id=$shop_id ";
+
+	if ( $supply_code )
+		$query .= " and supply_id=$supply_code";
+
+	if ( $trans_who )
+		$query .= " and trans_who='$trans_who'";
+
+	if ( $confirm )
+		$query .= " and download_date is not null ";
+	else
+		$query .= " and download_date is null ";
+
+	$query .= " order by pack desc";
+
+	$result = mysql_query ( $query, $connect );
+	$data = mysql_fetch_array ( $result );
+
+//	debug ( $query );
+//if ( $_SESSION[LOGIN_LEVEL] == 9 )
+//    echo $query;
+
+//if ( _DOMAIN_ == "nak21" )
+//	echo "<br>$query<br>";
+
+	echo $data[cnt];	
+  }
+
+  /////////////////////////////////////////
+  // 미송건 download
+  // date: 2008.4.24 - jk
+  function download()
+  {
+        	//-----------------------------------------------
+	global $connect, $saveTarget, $download_type;
+	global $trans_corp, $trans_format;
+	global $start_date, $end_date;
+	global $warehouse;
+
+	// 환경정보 가져온다
+	$down_config[is_header] = 0;
+	$down_config[pack_multiline] = 0;
+	$down_config[sortinfo] = 0;
+	$down_config[is_system] = 0;
+
+	$sys_connect = sys_db_connect();
+
+	// sys_trans_info에서 받아 옴
+	$query = "select * from sys_trans_index where trans_id='$trans_corp' and format_id='$trans_format'";
+	$result = mysql_query ( $query, $sys_connect );
+	$data = mysql_fetch_array ( $result );
+	mysql_close ($sys_connect);
+
+	$connect = db_connect();
+
+// echo $query. "<br>";
+
+	$download_config[is_header] = $data[is_header];
+	$download_config[pack_multiline] = $data[pack_multiline];
+	$download_config[sortinfo] = $data[sortinfo];
+	$download_config[is_system] = $data[is_system];
+
+	$this->m_download_config = $download_config;
+
+	//==================================
+	// format정보 다운로드
+	// header 정보 다운로드
+	$download_items = $this->get_format( $download_config );
+
+	// file open
+	$handle = fopen ($saveTarget, "w");
+
+	//====================================================
+	//	
+	// header 출력 부분 결정
+	// date: 2007.3.19 - jk
+	//
+	$buffer .= "
+<meta http-equiv='Content-Type' content='text/html; charset=euc-kr'>
+<html xmlns:x=\"urn:schemas-microsoft-com:office:excel\">
+<body>
+<html><table border=1>
+";
+
+	if ( $download_config[is_header] )
+	{
+		$buffer .= "<tr>";
+
+		// foreach ( $download_items as $key=>$value )
+		for( $i=0; $i < count( $download_items ); $i++ ) 
+		{
+			list ( $key , $value ) = $download_items[$i];
+			list ( $key , $header ) = split( ":", $key );
+			// print "$key / $header<br>";
+
+			if ( $header )
+		    		$buffer .= "<td align=center  style='mso-number-format:\@'>". $header . "</td>";
+			else
+		    		$buffer .= "<td align=center  style='mso-number-format:\@'>" . $this->convert_title( $key ) . "</td>";
+		}
+		$buffer .= "</tr>\n";
+	}
+	fwrite($handle, $buffer);
+
+	//====================================================
+	//	
+	// 주문 리스트 가져온다 
+	// date: 2007.3.19 - jk
+	//
+	// 회수 추가 2007.5.8 - jk
+	/*
+	global $status;
+        if ( $status == 3 ) // 회수 
+		$result = class_takeback::get_list("req_takeback");
+	else
+		$result = $this->get_list( $download_config ); 
+	*/
+	$query = "select b.* 
+                    from notyet_deliv a, orders b
+                   where a.seq = b.seq
+                     and a.status=1
+                     and b.order_cs not in (1,2,3,4,12) group by a.pack";
+	$result = mysql_query ( $query, $connect );
+
+	//===================================================
+	//
+	// data부분 download
+	//
+	while ( $data = mysql_fetch_array ( $result ) )
+	{	
+		// adong의 경우 합포 데이터의 경우 공급처가 20002일 경우 출력 하지 않는다.
+		if ( _DOMAIN_ == "adong" or _DOMAIN_ == "ezadmin" )
+		{
+			if ( $data[pack] )
+			{
+				if ( $this->check20002( $data[pack] ) )
+					continue;	
+			}
+			else
+				if ( $data[supply_id] == "20002" )
+					continue;
+		}
+	
+		$buffer = "<tr>\n";
+
+		// foreach ( $download_items as $key=>$value )
+		for( $i=0; $i < count( $download_items ); $i++ ) 
+		{
+			list ( $key , $value ) = $download_items[$i];
+			list ( $key , $header, $min_max ) = split( ":", $key );
+
+			    if ( preg_match( "/-/", $min_max) )
+			    {
+			       list ($min,$max ) = split ("-", $min_max );
+			       $this->min_product = $min;
+			       $this->max_product = $max - $min + 1;	// max에는 개수가 들어가야 함
+			    }
+			    else
+			    {
+			        $this->max_product = $min_max;
+			        $this->min_product = 1;
+			    }
+
+			if ( $key == "packs" )
+			{
+				//$buffer .= " [packs] ";
+		    		$buffer .= $this->get_data( $data, $key, $value );
+			}
+			else if ( $key == "none" )
+				continue;				
+			else
+		    		$buffer .= "<td style='mso-number-format:\"\@\"'>" . $this->get_data( $data, $key, $value ) . "</td>";
+		}
+
+
+		$buffer .= "</tr>\n";
+		fwrite($handle, $buffer);
+		$buffer = "";
+	}
+
+	// footer 기록
+	fwrite($handle, "</table>");
+
+	// excel로 변경
+	global $html_download;
+
+
+	if ( !$html_download )
+	{
+		$saveTarget2 = $saveTarget . "_[order].xls";
+		$run_module = "/usr/bin/perl /home/ezadmin/public_html/shopadmin/html2xls.pl -o $saveTarget -o $saveTarget2";
+		exec( $run_module );
+	}
+	else	
+		$saveTarget2 = $saveTarget;
+
+	header("Content-type: application/vnd.ms-excel");
+	header("Content-Disposition: attachment; filename=주문다운로드_" . date('Ymd') . ".xls");
+	header("Expires: 0");
+	header("Cache-Control: must-revalidate, post-check=0,pre-check=0");
+	header("Pragma: public");
+
+        if (is_file($saveTarget2)) { 
+          $fp = fopen($saveTarget2, "r");   
+          fpassthru($fp);  
+        } 
+
+        ////////////////////////////////////// 
+        // file close and delete it 
+	// file은 보관함
+        fclose($fp);
+	if ( !$html_download )
+	{
+		unlink($saveTarget);
+		// unlink($saveTarget2);
+	}
+	//else
+		//unlink($saveTarget2);
+
+
+
+  }
+
+  var $m_download_config;
+  //=====================================
+  //
+  // download
+  // download_type
+  //	req_takeback: 회수 요청
+  //	trans_no: 송장 입력 회수 요청
+  //	comp_takeback : 회수 완료 , 2007.3.15 추가 됨
+  //      => download format이 달라야 함 
+  function download2()
+  {
+	global $connect, $saveTarget, $download_type;
+	global $trans_corp, $trans_format;
+	global $start_date, $end_date;
+	global $warehouse;
+
+	// 환경정보 가져온다
+	$down_config[is_header] = 0;
+	$down_config[pack_multiline] = 0;
+	$down_config[sortinfo] = 0;
+	$down_config[is_system] = 0;
+
+	$sys_connect = sys_db_connect();
+
+	// sys_trans_info에서 받아 옴
+	$query = "select * from sys_trans_index where trans_id='$trans_corp' and format_id='$trans_format'";
+	$result = mysql_query ( $query, $sys_connect );
+	$data = mysql_fetch_array ( $result );
+	mysql_close ($sys_connect);
+
+	$connect = db_connect();
+
+// echo $query. "<br>";
+
+	$download_config[is_header] = $data[is_header];
+	$download_config[pack_multiline] = $data[pack_multiline];
+	$download_config[sortinfo] = $data[sortinfo];
+	$download_config[is_system] = $data[is_system];
+
+	$this->m_download_config = $download_config;
+
+	//==================================
+	// format정보 다운로드
+	// header 정보 다운로드
+	$download_items = $this->get_format( $download_config );
+
+	// file open
+	$handle = fopen ($saveTarget, "w");
+	//====================================================
+	//	
+	// header 출력 부분 결정
+	// date: 2007.3.19 - jk
+	//
+	$buffer .= "
+<meta http-equiv='Content-Type' content='text/html; charset=euc-kr'>
+<html xmlns:x=\"urn:schemas-microsoft-com:office:excel\">
+<body>
+<html><table border=1>
+";
+
+	if ( $download_config[is_header] )
+	{
+		$buffer .= "<tr>";
+
+		// foreach ( $download_items as $key=>$value )
+		for( $i=0; $i < count( $download_items ); $i++ ) 
+		{
+			list ( $key , $value ) = $download_items[$i];
+			list ( $key , $header ) = split( ":", $key );
+			// print "$key / $header<br>";
+
+			if ( $header )
+		    		$buffer .= "<td  style='mso-number-format:\@' align=center>". $header . "</td>";
+			else
+		    		$buffer .= "<td  style='mso-number-format:\@' align=center>" . $this->convert_title( $key ) . "</td>";
+		}
+		$buffer .= "</tr>\n";
+	}
+	fwrite($handle, $buffer);
+
+	//====================================================
+	//	
+	// 주문 리스트 가져온다 
+	// date: 2007.3.19 - jk
+	//
+	// 회수 추가 2007.5.8 - jk
+	global $status;
+        if ( $status == 3 ) // 회수 
+		$result = class_takeback::get_list("req_takeback");
+	else
+		$result = $this->get_list( $download_config ); 
+
+
+	//===================================================
+	//
+	// data부분 download
+	//
+	while ( $data = mysql_fetch_array ( $result ) )
+	{	
+		// adong의 경우 합포 데이터의 경우 공급처가 20002일 경우 출력 하지 않는다.
+		if ( _DOMAIN_ == "adong" or _DOMAIN_ == "ezadmin" )
+		{
+			if ( $data[pack] )
+			{
+				if ( $this->check20002( $data[pack] ) )
+					continue;	
+			}
+			else
+				if ( $data[supply_id] == "20002" )
+					continue;
+		}
+	
+		$buffer = "<tr>\n";
+
+		// foreach ( $download_items as $key=>$value )
+		for( $i=0; $i < count( $download_items ); $i++ ) 
+		{
+			list ( $key , $value ) = $download_items[$i];
+			list ( $key , $header, $min_max ) = split( ":", $key );
+
+			    if ( preg_match( "/-/", $min_max) )
+			    {
+			       list ($min,$max ) = split ("-", $min_max );
+			       $this->min_product = $min;
+			       $this->max_product = $max - $min + 1;	// max에는 개수가 들어가야 함
+			    }
+			    else
+			    {
+			        $this->max_product = $min_max;
+			        $this->min_product = 1;
+			    }
+
+			if ( $key == "packs" )
+		    		$buffer .= $this->get_data( $data, $key, $value );
+			else if ( $key == "none" )
+				continue;				
+			else
+		    		$buffer .= "<td style='mso-number-format:\"\@\"'>" . $this->get_data( $data, $key, $value ) . "</td>";
+		}
+
+
+		$buffer .= "</tr>\n";
+		fwrite($handle, $buffer);
+		$buffer = "";
+	}
+
+	// footer 기록
+	fwrite($handle, "</table>");
+
+	// excel로 변경
+	global $html_download;
+
+
+	if ( !$html_download )
+	{
+		$saveTarget2 = $saveTarget . "_[order].xls";
+		$run_module = "/usr/bin/perl /home/ezadmin/public_html/shopadmin/html2xls.pl -o $saveTarget -o $saveTarget2";
+		exec( $run_module );
+	}
+	else	
+		$saveTarget2 = $saveTarget;
+
+	header("Content-type: application/vnd.ms-excel");
+	header("Content-Disposition: attachment; filename=주문다운로드_" . date('Ymd') . ".xls");
+	header("Expires: 0");
+	header("Cache-Control: must-revalidate, post-check=0,pre-check=0");
+	header("Pragma: public");
+
+        if (is_file($saveTarget2)) { 
+          $fp = fopen($saveTarget2, "r");   
+          fpassthru($fp);  
+        } 
+
+        ////////////////////////////////////// 
+        // file close and delete it 
+	// file은 보관함
+        fclose($fp);
+	if ( !$html_download )
+	{
+		unlink($saveTarget);
+		// unlink($saveTarget2);
+	}
+	//else
+		//unlink($saveTarget2);
+
+  }
+
+  //=============================================
+  //
+  // 판매처가 20002인지 여부 check 
+  // date: 2007.6.12 - jk.ryu
+  // 황대리 요청 사항
+  //
+  function check20002( $pack )
+  {
+	global $connect;
+
+	$query = "select supply_id from orders where pack='$pack'";
+	$result = mysql_query ( $query, $connect ) or die(mysql_error());;
+
+	// return 값은 false
+	$ret = 0;
+	while ( $data = mysql_fetch_array ( $result ) )
+	{
+		if ( $data[supply_id] == "20002" )
+			$ret = 1;
+	}
+
+	return $ret;	
+  }
+  
+  //=============================================
+  //
+  // convert_title table로부터 data가져옴
+  // date: 2007.3.27 - jk.ryu
+  //
+  function convert_title( $key )
+  {
+	switch ( $key )
+	{
+		case "seq":          return "주문번호"; break;
+		case "order_id":     return "체결번호"; break;
+		case "shop_name":    return "사이트명"; break;
+		case "recv_name":    return "고객명"; break;
+		case "recv_zip":     return "우편번호"; break;
+		case "recv_zip_only":return "우편번호"; break;
+		case "recv_address": return "주소"; break;
+		case "recv_tel":     return "전화번호1"; break;
+		case "recv_mobile":  return "전화번호2"; break;
+		case "qty":          return "수량"; break;
+		case "qty_only":     return "수량"; break;
+		case "trans_who":    return "배송료구분"; break;
+                case "memo":         return "배송시유의사항"; break;
+
+		case "pack":         return "관리번호2"; break;
+		case "packs":        return "상품"; break;
+		case "collect_date": return "발주일"; break;
+		default :
+			return $key;
+	}
+  }
+
+  //=============================================
+  //
+  // trans_format table로부터 data가져옴
+  // date: 2007.3.19 - jk.ryu
+  //
+  function get_list( $download_config )
+  {
+	// date: 2007.11.1 warehouse 추가 for ckcompany - jk
+	global $connect, $shop_id, $supply_code, $trans_who, $status, $confirm, $warehouse;
+	global $enable_sale;
+	//=============================================
+	//
+	// warehouse에 값이 있는 경우 
+	// date: 2007.11.1 - jk
+	//
+	switch ( $warehouse )
+	{
+		case "A":
+			$query = "select orders.* 
+				    from tbl_print_enable a left join orders using (seq) 
+				   where  ";
+			break;
+		case "C":
+		case "K":
+		case "P":
+			//$query = "select orders.* 
+			//	    from tbl_print_enable a left join orders using (seq) 
+			//	   where a.warehouse = '$warehouse' and ";
+			$query = "select orders.* 
+				    from tbl_print_enable a left join orders using (seq) 
+				   where a.warehouse = '$warehouse' and ";
+			break;
+		default:
+			$query = "select * from orders where ";
+			if ( 
+			    _DOMAIN_ == "yeowoowa" || 
+			    _DOMAIN_ == "luxkiss" 
+			)
+			{
+			   $query = "select orders.*, products.name from orders, products 
+ 			  	      where orders.product_id=products.product_id  and ";
+ 			}
+			break;
+	}
+
+	$status_list = "0,11,9,5,7,13";
+	if ( $status == 1 ) // 정상
+	{
+	    $status_list = "0,11,5,7,13,6,8";
+	    $query .= " status in (1,11) 
+			and order_cs in ( $status_list ) ";
+	}
+	elseif ( $status == 2 ) // 교환
+	{
+	    $status_list = "5,9,11,13";
+	    $query .= " status in (1,2,11) 
+			and order_cs in ( $status_list ) ";
+	}
+	elseif ( $status == 4 ) // 교환요청
+	{
+	    $query .= " status = 2 and order_cs = 0 ";
+	}
+	else
+	    $query .= " status in (1,2,11) and order_cs in ( 0,11,9,5,7,13 ) ";
+
+	if ( $shop_id )
+	    $query .= " and shop_id='$shop_id'";
+
+	// 보류는 download받지 않는다.
+	// 2008.1.10 - jk 황대리 요청 사항
+	// yuen 2008.3.19 yuen 추가
+        if ( _DOMAIN_ == "pinkhoute"
+          || _DOMAIN_ == "yuen"
+        )
+	    $query .= " and hold = 0 ";
+
+	//======================================================
+	// gmarket 해외 배송은 download대상이 아님
+	// 해외 배송 룰이 변경됨 - 2007.10.1 - jk
+	//	-> 해외 배송건들도 자체 택배로 gmarket으로 전송함
+	if ( _DOMAIN_ != "jm1234" 
+         and _DOMAIN_ != "lsy1115" 
+         and _DOMAIN_ != "limegreen" 
+         and _DOMAIN_ != "qlstpsxm" 
+         and _DOMAIN_ != "tankgirl" 
+         and _DOMAIN_ != "sy" 
+         and _DOMAIN_ != "bubigirl" 
+         and _DOMAIN_ != "kkusebo" 
+	)
+	    $query .= " and shop_id <> 10067 ";
+
+	if ( $supply_code )
+		$query .= " and supply_id ='$supply_code'";
+
+	if ( $trans_who )
+		$query .= " and trans_who ='$trans_who'";
+
+	if ( $confirm )
+		$query .= " and download_date is not null ";
+	else
+		$query .= " and download_date is null ";
+
+	//================================================
+	//
+	// 합포가 한 줄인지 여부 check
+	// 일단은 합포가 여러줄인 업체부터 시작해야 함
+	// date: 2007.3.19 - jk.ryu
+        //
+	if ( !$download_config[pack_multiline] )
+	{
+		$query .= " and (orders.pack=orders.seq or orders.pack is null or orders.pack=0) ";
+
+		//=====================================
+		// 소팅 정보 check
+		// 합포가 1줄에 나올경우만 sorting이 가능함
+		if ( $download_config[sortinfo] )
+			$query .= " order by " . $download_config[sortinfo];
+	}
+	else
+	{
+		//=====================================
+		// 소팅 정보 check
+		// 합포가 각줄에 나올경우는 
+		if ( $download_config[sortinfo] )
+			$query .= " order by pack, " . $download_config[sortinfo];
+		else
+			$query .= " order by pack, seq desc";
+	}
+/*
+if ( _DOMAIN_ == "luxkiss" )
+{
+    echo $query;
+}
+*/
+debug ( "[get_list] $query " );
+
+	$result = mysql_query ( $query, $connect );
+	return $result;
+  }
+
+  //=============================================
+  //
+  // trans_format table로부터 data가져옴
+  // date: 2007.3.19 - jk.ryu
+  //
+  function get_format( $download_config )
+  {
+	global $connect, $trans_corp, $trans_format;
+	
+	// format 정보 가져온다
+	// system format은 사용자가 수정할 수 없음
+        if ( $download_config[is_system] )
+        {
+		// trans_format의 값은 unique함
+		$query  = "select * from sys_trans_format 
+			    where format_id='$trans_format' and trans_id='$trans_corp' order by seq";
+
+		$sys_connect = sys_db_connect();
+		$result = mysql_query ( $query, $sys_connect );
+	}
+	else
+	{
+		// trans_format의 값은 unique함
+		$query  = "select * from trans_format 
+			    where format_id='$trans_format' and trans_id='$trans_corp' order by seq";
+
+		$result = mysql_query ( $query, $connect );
+	}
+
+
+	$arr_format = array();
+	$i = 0;
+	while ( $data = mysql_fetch_array ( $result ) )
+	{
+		// echo htmlspecialchars($data[macro_value]);
+		$this->convert_macrotokey ( $data[macro_value], &$key, &$value );
+		// echo " : key->$key / $value <br>";
+
+		//$arr_format[$key] =  "test";	
+		$arr_format[$i] =  array( $key, $value );	
+		$i++;
+	}
+	return $arr_format;
+  }
+
+  //=============================================
+  //
+  // macro 값을 $key와 $value로 변경
+  //
+  function convert_macrotokey( $macro , &$key, &$value )
+  {
+	switch ( $macro )
+	{
+		case "<order_id>";
+			$key = "order_id";
+			$value = "주문번호";
+		break;
+		default :  // < > 사이의 값이 나옴
+			if ( preg_match( "/[\<](.*)[\>](.*)/", $macro, $matches ) )
+			{
+				$key   = $matches[1];
+				$value = $matches[2];
+			}
+			else
+				echo "code 123: $macro | [$key] 입력값 오류";
+	}
+  }
+
+  //========================================
+  //
+  // 값에 따라 사용자 정의 값이 변경된다.
+  //
+  function selector( $data, $macro )
+  {
+	if ( preg_match( "/[\[](.*)[\]]/", $macro, $matches ) )
+	{
+		$macros = $matches[1];
+		$arr_datas = split( "\|\|", $macros );
+
+		foreach ( $arr_datas as $_data )
+		{
+			list( $key, $value, $target ) = split( ":", $_data );
+			if ( $data[$key] == $value )
+				return $target;
+		}
+	}
+	else
+		return "매크로 값 오류";
+  }
+
+  //========================================
+  //
+  // 사용자 정의 값의 경우..(ok)
+  //  date: 2007.3.20 - jk.ryu
+  //
+  function user_defined( $data, $macro )
+  {
+	if ( preg_match( "/[\[](.*)[\]]/", $macro, $matches ) )
+		return $matches[1];
+	else
+		return "매크로 값 오류";
+	
+  }
+
+  //====================================
+  //
+  //  trans_price 처리 부분
+  //  도서지역일 경우 배송비가 다를 수 있음
+  //  date: 2007.4.27 - jk
+  //
+  function trans_price( $data, $macro )
+  {
+	if ( preg_match( "/[\[](.*)[\]]/", $macro, $matches ) )
+	{
+		$arr_macro = split( "\|\|", $matches[1] );
+
+		$default_price = $arr_macro[0];
+
+		for ( $i=1;$i < count( $arr_macro ) ; $i++ )
+		{
+			//( $zip, $price ) = split ( ",", $arr_macro[$i] );
+			$_ = split ( ",", $arr_macro[$i] );
+
+			// if ( $data[recv_zip] == $_[0] )
+			if (preg_match("/$_[0]/i", $data[recv_zip] ) )
+				$default_price = $_[1];
+		}
+	}
+
+	return $default_price;
+  }
+
+
+  //====================================
+  //
+  // recv_name 처리 부분
+  //  합포가 여러줄에 나올 경우는 pack대신 product를 사용하면 됨
+  //  date: 2007.3.27 - jk
+  //
+  function recv( $data, $macro )
+  {
+	if ( preg_match( "/[\[](.*)[\]]/", $macro, $matches ) )
+	{
+		$arr_macro = split( "\|\|", $matches[1] );
+
+		for ( $i=0;$i < count( $arr_macro ) ; $i++ )
+		{
+			$string .= $this->get_data( $data, $arr_macro[$i] ) . " ";
+		}
+	}
+
+	return $string;
+  }
+
+  //====================================
+  //
+  // product 처리 부분
+  //  합포가 여러줄에 나올 경우는 pack대신 product를 사용하면 됨
+  //  date: 2007.3.27 - jk
+  //
+  function product( $data, $macro )
+  {
+	if ( preg_match( "/[\[](.*)[\]]/", $macro, $matches ) )
+	{
+		$arr_macro = split( "\|\|", $matches[1] );
+
+		for ( $i=0;$i < count( $arr_macro ) ; $i++ )
+		{
+			$string .= $this->get_data( $data, $arr_macro[$i] );
+		}
+	}
+
+	return $string;
+  }
+
+  function total_products( $data )
+  {
+	global $connect;
+	//=================================================
+	//
+	// 합포일 경우와 합포가 아닐 경우가 있음//
+	// 
+	if ( $data[pack] )
+	{
+		$query = "select qty from orders where pack='$data[pack]'";
+		$result = mysql_query( $query, $connect );
+	
+		$total_products = 0;
+		// memo의 특수 문자 삭네
+		while ( $data1 = mysql_fetch_array ( $result ) )
+		{
+			if ( $data[packed] )
+			{
+			    $arr_packed = split(",", $data1[pack_list] );
+			    $total_products = $total_products + ( count( $arr_packed ) * $data1[qty] );
+			}
+			else
+			    $total_products = ($total_products + $data1[qty]) - $this->get_part_cancel($data[seq]);
+		}
+		return $total_products;
+	}
+	else
+	// 합포가 아닌 경우
+	{
+	    $total_products = $data[qty] - $this->get_part_cancel( $data[seq] );
+	    return $total_products;
+	}
+  }
+ 
+  //====================================
+  //
+  // memo 처리 부분
+  //  date: 2007.3.27 - jk
+  //
+  function memo ( $data, $macro )
+  {
+	global $connect;
+
+	//=================================================
+	//
+	// 교환일 경우
+	// date: 2007.5.2 -jk
+	if ( $data[order_cs] == 5 or $data[order_cs] == 11)
+		$memo_str = "[[교환]] ";
+       	if ( $data[order_cs] == 9 or $data[status] == 11 )
+       		$memo_str = "[[맞교환]] ";
+
+	// 망고의 경우
+	if ( _DOMAIN_ == "mangosteen" )
+	{
+		if ( $data[packed] )
+		{
+			$length = strlen( $data[product_name] );
+			$begin = $length - 10;
+
+			// preg_match("/\[(.*)\]/", $data[product_name], $match );
+			//$memo_str .= $match[1];
+			$mango_memo = substr($data[product_name], $begin, 10);
+		}
+	}
+
+	//=================================================
+	//
+	// 교환일 경우
+	// date: 2007.5.2 -jk
+	if ( substr($data[order_id],0,1) == "C" )
+	{
+	    if ( $data[order_cs] == 5 or $data[order_cs] == 11)
+		$memo_str = "[[교환]] ";
+       	    if ( $data[order_cs] == 9 or $data[status] == 11 )
+       		$memo_str = "[[맞교환]] ";
+	}
+
+	//=================================================
+	//
+	// 합포일 경우와 합포가 아닐 경우가 있음//
+	// 
+	if ( $data[pack] )
+	{
+		$query = "select * from orders where pack='$data[pack]'";
+		$result = mysql_query( $query, $connect );
+	
+		preg_match( "/[\[](.*)[\]]/", $macro, $matches );
+		$arr_macro = split( "\|\|", $matches[1] );
+
+		$total_products = 0;
+		$total_order = 0;
+
+		$before_memo = "";
+		// memo의 특수 문자 삭네
+		while ( $data1 = mysql_fetch_array ( $result ) )
+		{
+			$clean_memo = str_replace( array("\r","\n","\r\n"), " ", $data1[memo] );
+			$clean_options = str_replace( array("\r","\n","\r\n"), " ", $data1[options] );
+
+			// nak21은 모든 메모가 출력되길 원함
+			// 2007.11.23 - jk 조윤정팀장이 원함
+			// 2008.8.1 string2 추가 - jk 
+			if ( $clean_memo != $before_memo || _DOMAIN_ == "nak21" )
+			{
+				$string .= $clean_memo;
+				$string2 .= $clean_options;
+				$before_memo = $clean_memo;
+			}
+
+debug ( "options: $data[pack] / $data1[option] / $string2");
+
+			$total_order++;
+
+			if ( $data[packed] )
+			{
+			    $arr_packed = split(",", $data1[pack_list] );
+			    $total_products = $total_products + ( count( $arr_packed ) * $data1[qty] );
+			}
+			else
+			    $total_products = $total_products + $data1[qty] - $this->get_part_cancel($data[seq]);
+		}
+
+		for ( $i=0;$i < count( $arr_macro ) ; $i++ )
+		{
+			switch ( $arr_macro[$i] )
+			{
+				case "total_order":
+					$memo_str .= " [총" . $total_order . "개] " . $mango_memo;
+					break;
+				case "total_products":
+					$memo_str .= " [총" . $total_products . "개] " . $mango_memo;
+					break;
+                                case "total_products_only":
+					$memo_str .= $total_products;
+					break;
+				case "memo":
+					$memo_str .= strip_tags ( str_replace( array("\r","\n","\r\n"), " ", $string ) );
+					break;
+				case "real_option":
+					$memo_str .= strip_tags ( str_replace( array("\r","\n","\r\n"), " ", $string2 ) );
+					break;
+				default:
+					$memo_str .= $this->get_data( $data, $arr_macro[$i] );
+					
+			}
+		}
+
+
+debug ( "/seq: $data[seq] / $memo_str " );
+
+		//====================================================
+		//
+		// total 금액을 보고 사은품이 있는지 check한다.
+		//  date: 2007.4.4 - jk.ryu
+		//if ( $data[gift] )	
+		//	return "사은품: $data[gift] / $memo_str";
+		//else
+			return $memo_str;
+	}
+	else
+	// 합포가 아닌 경우
+	{
+		if ( preg_match( "/[\[](.*)[\]]/", $macro, $matches ) )
+		{
+			$arr_macro = split( "\|\|", $matches[1] );
+
+			$total_order = 1;
+			$total_products = $data[qty] - $this->get_part_cancel( $data[seq] );
+			for ( $i=0;$i < count( $arr_macro ) ; $i++ )
+			{
+				switch ( $arr_macro[$i] )
+				{
+					case "total_order":
+						$memo_str.= " [총" . $total_order . "개] " . $mango_memo;
+						break;
+					case "total_products":
+						$memo_str.= " [총" . $total_products . "개] " . $mango_memo;
+						break;
+                                	case "total_products_only":
+						$memo_str .= $total_products;
+					break;
+					case "memo":
+						$memo_str.= strip_tags(str_replace( array("\r","\n","\r\n"), " ", $data[memo] ));
+						break;
+					default:
+						$memo_str .= $this->get_data( $data, $arr_macro[$i] );
+				}
+			}
+		}
+
+
+		//if ( $data[gift] )	
+		//	return "사은품: $data[gift] / $memo_str";
+		//else
+			return $memo_str;
+	}
+
+
+  }
+
+  //====================================
+  //
+  // island 추가 중
+  // date: 2007.9.4 - jk
+  //  <island>[선불:2500||착불:5000]
+  function island( $data, $macro )
+  {
+	if ( $data[island] )
+	{
+		if ( preg_match( "/[\[](.*)[\]]/", $macro, $matches ) )
+		{
+			$arr_macro = split( "\|\|", $matches[1] );
+
+			for ( $i=0;$i < count( $arr_macro ) ; $i++ )
+			{
+				list( $key, $value ) = split( ":", $arr_macro[$i] );
+				$trans_who[$key] = $value;
+			}
+
+			return $trans_who[$data[trans_who]];
+
+		}
+		else
+			return "매크로 값 오류";
+	}
+  }
+
+
+
+  //====================================
+  //
+  // 우편번호로 배송비 체크 하는 로직 - 미완
+  //  date: 2007.5.23 - jk
+  //
+  function trans_zip( $data, $macro )
+  {
+	if ( preg_match( "/[\[](.*)[\]]/", $macro, $matches ) )
+	{
+		$arr_macro = split( "\|\|", $matches[1] );
+
+		for ( $i=0;$i < count( $arr_macro ) ; $i++ )
+		{
+			list( $key, $value ) = split( ":", $arr_macro[$i] );
+
+			// 도서지역 추가
+			// date: 2007.5.8 - jk
+			if ( $key == "island" )
+			{
+				if ( $data[island] == 1 ) 
+					return $value;
+			}
+
+			$trans_who[$key] = $value;
+		}
+
+		return $trans_who[$data[trans_who]];
+
+	}
+	else
+		return "매크로 값 오류";
+  }
+
+ 
+
+  //====================================
+  //
+  // 선 착불 매크로...(ok)
+  //  date: 2007.3.20 - jk
+  //
+  //  date: 2007.9.4 - 도서선불, 도서착불 추가
+  function trans_who( $data, $macro )
+  {
+	if ( preg_match( "/[\[](.*)[\]]/", $macro, $matches ) )
+	{
+		$arr_macro = split( "\|\|", $matches[1] );
+
+		for ( $i=0;$i < count( $arr_macro ) ; $i++ )
+		{
+			list( $key, $value ) = split( ":", $arr_macro[$i] );
+
+			//==========================
+			// 도서지역 추가
+			// date: 2007.5.8 - jk
+			// 도서선불, 도서착불이 생겨서 더이상 사용하지 않음
+			/*
+			if ( $key == "island" )
+			{
+				//==========================================================
+				// 기본 5000에 배송비 2500을 제해서 출력해야 하는거 아닌가?
+				// 아래의 로직이 왜 있는걸까? - 2007.9.5
+				if ( $data[island] == 1 ) 
+					return $value - $data[trans_price] ? 2500 : 0;
+
+			}
+			*/
+
+			$trans_who[$key] = $value;
+		}
+
+  		//  date: 2007.9.4 - 도서선불, 도서착불 추가
+		if ( $data[island] == 1 )
+		{
+			// island keyword에 값이 있을경우 처리, 선착불 구분없이 처리
+			if ( $trans_who[island] != '' )
+			{
+				return $trans_who[island] - $data[trans_price] ? 2500 : 0;
+			}
+			// island keyword에 값이 없을 경우-> 도서선불, 도서착불
+			else
+			{
+				if ( $data[trans_who] == "선불" )
+					return $trans_who["도서선불"] ? $trans_who["도서선불"] : $trans_who["선불"];
+				else
+					return $trans_who["도서착불"] ? $trans_who["도서착불"] : $trans_who["착불"];
+			}
+		}
+		else
+			return $trans_who[$data[trans_who]];
+
+	}
+	else
+		return "매크로 값 오류";
+  }
+
+    ///////////////////////////////////////////////////
+    // ( 2008.1.3 ) 복합 조건을 같은 단품 주문 처리 -jk
+    //  ex) <composite>[name||option||value]
+    function composite( $data, $macro )
+    {
+        // []의 수를 세어야 함
+        preg_match_all("|[\[](.*)[\]]|U", $macro, $matches);
+        // 매크로 케이스 체크
+	$arr_macro = split( "\|\|", $matches[1][0] );
+
+        for ( $i=0; $i < count ( $arr_macro ); $i++ )
+        {
+            $_key = $arr_macro[$i];
+            $_str .= $this->get_data( $data, $_key );
+        }
+	return $_str;
+    }
+
+    function get_datas( $data,$arr_macro )
+    {
+        for ( $i=0; $i < count ( $arr_macro ); $i++ )
+        {
+            $_key = $arr_macro[$i];
+            $_str .= $this->get_data( $data, $_key );
+        }
+	return $_str;
+    }
+
+  function get_part_cancel( $seq )
+  {
+	global $connect;
+	$query = "select qty from part_cancel where order_seq='$seq'";
+	$result = mysql_query ( $query, $connect );
+	$data = mysql_fetch_array ( $result );
+	return $data[qty];
+  }
+
+  //====================================
+  //
+  // 합포가 한 줄에 나올 경우
+  //  date: 2007.3.20 - jk
+  //  get_pack_data( $pack, $arr_keys ) 
+  //
+  function packs ( $data, $macro )
+  {
+	// 합포 case check
+	// date: 2007.3.26 - jk
+
+	$this->m_star_refund_count = 0;
+	$this->m_gift_count = 0;
+	//========================================
+	//
+	// macro 정보 가져오기
+	// case 1, 2, 3를 경정해야 함
+	// date: 2007.3.26 - jk.ryu
+	//
+	// 매크로 무결성 체크
+	preg_match_all("|[\[](.*)[\]]|U", $macro, $matches);
+
+	// 매크로 케이스 체크
+	if ( count($matches[0]) > 1 ) 
+	{
+		$macro_case = 1; // ex) <packs>[product_name][options][qty]
+		$arr_macro = $matches[1];
+	} 
+	//=======================================================
+	//
+	// pack_list가 있을 경우엔 각 셀에 product_id를 넣어야 함
+	// date:2007.4.16 - jk.ryu
+	// 구분자: 길이: 사은품이 생김 2007.8.10
+	//=======================================================
+	else
+	{
+		$arr_macro = split( "\|\|", $matches[1][0] );
+
+		if ( preg_match( "/구분자:(.*),길이:(.*)/", $arr_macro[0], $matches_temp ) )
+		{
+			$macro_case = 2;
+
+			$_qty = ""; // init
+			$qty = $data[qty] - $this->get_part_cancel( $data[seq] );
+			$_qty = $qty;
+
+			$separator = $matches_temp[1];	
+
+			if ( $separator == "cr" )
+				$separator = "\n";
+
+			$max = $matches_temp[2];
+			// print "sep: $separator / $max <br>";
+		}
+		else
+		{
+			// 각 셀에 data가 들어가는 경우?
+			$macro_case = 3;
+		}
+	}
+
+	//==============================================================
+	//
+	// data 처리 부분
+	// 합포 데이터 처리
+	//
+
+//echo "ppp=> $separator / $max <br>";
+//exit;
+
+	if ( $data[pack] )
+	{
+		// echo "pack->$data[pack] / $data[seq] <br>";
+		return $this->get_pack_datas ( $data[pack], $arr_macro, $macro_case, $separator, $max );
+	}
+	// 합포가 아닌 데이터 처리
+	else
+	{
+
+		// confirm: 2007.3.26 -jk
+		// 묶음 상품인 경우
+		$i = 0;	
+
+		//=============================================
+		//
+		// 상품에 대한 출력 옵션을 준 경우 
+		// date: 2007.7.11 - jk.ryu
+		//  최소 출력이 1보다 클 경우엔 합포가 아니기 때문에 출력할게 없음
+		//
+
+		//=======================================
+		// 합포가 아닌 경우 min_product의 개수가 0일때는 출력
+		// 2 보다 크면 출력 안함
+		// 1 일때는 출력
+		// 0-1 사이면 출력
+		if ( $this->min_product < 2 and  $this->min_product >= 0 )			
+		{
+			if ( $data[packed] )
+			{
+				$arr_packed = split(",", $data[pack_list] );
+				$j=0;
+
+				// macro case 1은 각 셀에 data들어가기
+				if ( $macro_case == 1 )
+					$separator = "cells";
+				else if ( $macro_case == 2 )
+					$string .= "<td style='mso-number-format:\@'>";
+
+				while ( $j < count( $arr_packed ) )
+				{
+					if ( $macro_case == 3 ) $string .= "<td style='mso-number-format:\@'>";
+					$string .= $this->get_packed_list ( $arr_packed[$j], $arr_macro, $data, $separator, $max );
+					if ( $macro_case == 3 ) $string .= "</td>";
+					$j++;
+				}
+
+				if ( $macro_case != 1  && $macro_case == 2)
+					$string .= "</td>";
+
+				// max 개수 만큼 <td> 입력
+				if ( $this->max_product )
+				{
+				    for ( $i=$j; $i < $this->max_product; $i++)
+				    {
+				        $string .= "<td  style='mso-number-format:\@'> .";
+					$string .= "</td>";
+				    }
+				}
+				return $string;
+			}
+			// date: 2007.5.15 - jk
+			// 묶음 상품이 아닌 경우
+			else
+			{
+				//=================================================
+				//
+				// kyuhoon3의 경우 ;를 시작에 넣는다. - jk.ryu
+				// date: 2007.6.12
+				//
+				/*
+				if ( _DOMAIN_ == "tankgirl" )
+					$_string = "--------------------;";
+				else
+					$_string = "";
+				*/
+				// 합포가 아닌 경우 출력할 게 없음
+				// date: 2007.7.11 - jk.ryu
+
+					while( $i < count( $arr_macro ) )
+					{
+						# echo "key:=> " . $arr_macro[$i] . "<br>";
+						if ( $macro_case == 1 ) $_string .= "<td  style='mso-number-format:\@'>";
+						$_string .= $this->get_data( $data, $arr_macro[$i] );
+						if ( $macro_case == 1 ) $_string .= "</td>";
+						$i++;
+					}
+			}	
+
+		}
+
+		//=================================================
+		//
+		// separator가 있을 경우 2007.4.3 - jk.ryu
+		//
+		// zoc76이 요청한 부분 - 2007.11.15
+		if ( $separator == "dongbu" )
+		{
+			$qty = $data[qty] - $this->get_part_cancel( $data[seq] );
+			$_string.= "`" . $qty . "`$";
+		}
+
+		//===================================================
+		// zoc76은 pack_string을 타지 않는다?
+		// 2008.3.24 - jk zoc76요청
+		if ( _DOMAIN_ != "zoc76" )
+		    if ( $separator )
+			$_string = $this->pack_string( $_string, $separator, $max );
+
+		//================================================
+		// $this->max_product_no가 있는 경우엔 공란이 출력되어야 한다
+		// date: 2007.6.20 - jk	
+		// max_product에는 count가 들어가야 하네..
+		// date: 2007.7.11 - jk
+		//
+		// $length = $this->max_product - $this->min_product;
+
+		if ( $this->max_product )
+		{
+			for ( $i=2; $i <= $this->max_product; $i++)
+				$_string .= "<td> </td>";
+		}	
+
+		if ( $macro_case == 1 )
+			return $_string;			
+		else
+			return "<td  style='mso-number-format:\@'>" . $_string . "</td>";			
+	}
+
+  }
+
+  //==================================
+  // date: 2007.3.26 - jk.
+  function get_product_name( $product_id )
+  {
+	global $connect;
+	$query = "select name from products where product_id='$product_id'";
+        $result = mysql_query ( $query, $connect );
+        $data = mysql_fetch_array( $result );
+
+	if ( _DOMAIN_ == "yuen" 
+	or _DOMAIN_ == "yeowoowa"
+	or _DOMAIN_ == "miraeak" )
+		preg_match("/\[?\](.*)/", $data[name], $matches);
+
+	if ( $matches[1] )
+		$name = $matches[1];
+	else
+		$name = $data[name];
+
+        return $name; 
+  }
+
+  //=================================================
+  //
+  // 값을 받아 옴
+  //  date: 2007.3.19 - jk.ryu
+  // option을 만들어 넣었음 option에는 다운로드 할 값을 조건이 들어감 [cnt|name|option|memo] 이런식임
+  //   "|" : 셀을 구분 함 
+  //
+  function get_data( $data, $key , $macro = "" )
+  {
+	//
+	// method 처리 되는 key들
+	// trans_who: 선착불 처리
+	// user_defined: 사용자 정의
+	// packs: 합포 처리
+	// product: 상품 정보
+	//
+	global $connect;
+	if ( method_exists( $this, $key ) )
+	{
+		return $this->$key($data, $macro);
+	}
+	else
+	{
+	    $arr_macro = split( "\&", $key );
+	    $string = "";
+	    if ( count( $arr_macro ) > 1 )
+	    {
+		$string = $this->get_datas( $data, $arr_macro );
+	    }
+	    else
+		switch ( $key )
+		{	
+		        case "org_price":
+				$string = $data[qty] * $data[org_price];
+				break;
+		        case "(":
+				$string = "(";
+				break;
+		        case ")":
+				$string = ")";
+				break;
+		        case "[":
+				$string = "[";
+				break;
+		        case "]":
+				$string = "]";
+				break;
+			case "star_refund":
+				$this->m_star_refund_count++;
+				if ( $this->m_star_refund_count == 1 )
+					$string = "…=★ 교환 & 반품 031-575-1890/1885 ★=…``$``$";
+				break;
+			case "only_gift":
+				$this->m_gift_count++;
+				if ( $this->m_gift_count== 1 )
+					$string = $data[gift];
+				break;
+			case "exchange":
+				if ( $data[order_cs] == 9 )
+					$string = "[맞교환]";
+				break;
+			case "brand":
+				$string = class_product::get_brand_name( $data[product_id] );
+				break;
+			case "market_price":
+				$string = "(" . number_format( $data[market_price] ) . "원)";
+				break;
+			//
+			case "collect_date":
+				$string = substr( $data[collect_date], 5,10 );
+				break;
+			case "collect_time":
+				if ( substr( $data[collect_time], 0,2 ) < 12 )
+					$string = "(AM)";
+				else
+					$string = "(PM)";
+
+				//$string = " " . substr( $data[collect_time], 0,2 ) . "시 ";
+				break;
+			// order date: 2007.7.30 추가 -jk
+			case "order":
+				$string = $this->m_order++;
+				break;
+			// zero , date: 2007-07-02 추가 - jk
+			case "zero":
+				$string = "0";
+				break;
+			// star
+			case "star":
+				$string = " # ";
+				break;
+			case "space":
+				$string = "  ";
+				break;
+			case "gift_title":
+				if ( $data[gift] )
+				$string = "(사은품: " . $data[gift] . ")";
+				else
+					$string = "";
+				break;
+			// dnshop 10080일 경우 - yeowoowa의 경우
+                        // 2007.5.7 dnshop
+                        case "dnshop_only":
+				if ( $data[shop_id] == "10080" )
+					$string = "dnshop";
+                                break;
+			// recv_tel, recv_mobile 관련
+			case "recv_tel":
+				if ( $data[recv_tel] == '' or $data[recv_tel] == "--" )
+					$string = $data[recv_mobile];
+				else
+					$string = $data[recv_tel];
+				break;
+			case "recv_mobile":
+				if ( $data[recv_mobile] == '' or $data[recv_mobile] == "--" )
+					$string = $data[recv_tel];
+				else
+					$string = $data[recv_mobile];
+				break;
+			//===============================================
+			// memo 관련 date: 2007.4.20
+			// 
+			case "org_memo":
+				$string .= strip_tags ( str_replace( array("<br>","\r","\n","\r\n")," ",$data[memo]));
+				break;
+			//===============================================
+			// packs 관련 date: 2007.3.19
+			// 
+			case "x":
+				$string = " &nbsp; ";
+				break;
+			//==============================
+			// leedb case
+			// 황대리 요청 사항
+			case "product_and_option2":
+				$product_name = "";
+				$option = "";
+				if ( $data[product_id] )
+				{
+					class_D::get_product_name_option2( $data[product_id], &$product_name, &$option );	
+					$string = "$product_name [$option]";
+					$string = str_replace( array ("\r", "\r\n", "\n"),"", $string );
+				}
+				else
+					$string = "pid: $data[product_id]";
+				break;
+
+
+			case "qty_product_and_option":
+				$product_name = "";
+				$product_option = "";
+
+				if ( $_SESSION[STOCK_MANAGE_USE] )
+				{
+					class_D::get_product_name_option2( $data[product_id], &$product_name, &$product_option );	
+				}
+				else
+				{
+					$product_name = $this->get_product_name( $data[product_id] );	
+					$product_option = $data[options];
+				}
+
+				if ( _DOMAIN_ == "leedb" || _DOMAIN_ == "tg2263" )
+				{
+					$product_options = $product_option ? $product_option : $data[options];
+					$product_options = "[" . str_replace( array ("\r", "\r\n", "\n"),"", $product_options) . "]";
+				}
+				else
+					$product_options = $product_option;
+
+				// $string = str_replace( array ("\r", "\r\n", "\n"),"", $string);
+				// $string = $data[product_id] . $data[options] . "/";
+
+				$string .= $data[qty] . "개:" . $product_name."-". $product_options;
+				break;
+
+
+			case "product_and_option":
+				$product_name = "";
+				$product_option = "";
+				if ( $_SESSION[STOCK_MANAGE_USE] )
+				{
+					class_D::get_product_name_option2( $data[product_id], &$product_name, &$product_option );	
+				}
+				else
+				{
+					$product_name = $this->get_product_name( $data[product_id] );	
+					$product_option = $data[options];
+				}
+
+//if ( $_SESSION[LOGIN_LEVEL] == 9 )
+//	echo "options: $product_option / " . $_SESSION[STOCK_MANAGE_USE];
+
+				if ( _DOMAIN_ == "leedb" || _DOMAIN_ == "tg2263" )
+				{
+					$product_options = $product_option ? $product_option : $data[options];
+					$product_options = "[" . str_replace( array ("\r", "\r\n", "\n"),"", $product_options) . "]";
+				}
+				else
+					$product_options = $product_option;
+
+				// $string = str_replace( array ("\r", "\r\n", "\n"),"", $string);
+				// $string = $data[product_id] . $data[options] . "/";
+
+				$string .= $product_name."-". $product_options;
+				break;
+
+			//===============================
+			// ckcompany요청 사항
+			case "tommorow":
+				$string .= date('Y-m-d', strtotime('+1 day'));
+				break;	
+			case "yesterday":
+				$string .= date('Y-m-d', strtotime('-1 day'));
+				break;	
+			case "qty_product_option":
+
+				if ( $_SESSION[STOCK_MANAGE_USE] )
+				{
+					class_D::get_product_name_option2( $data[product_id], &$product_name, &$product_option );	
+				}
+				else
+				{
+					$product_name = $this->get_product_name( $data[product_id] );	
+					//echo "name->$product_name / $data[product_id] ////<br>";
+				}
+
+				$product_options = $product_option ? $product_option : $data[options];
+
+				$product_options = "[" . $product_options . "]";
+				$product_options = str_replace( array ("\r", "\r\n", "\n"),"", $product_options);
+
+				$string = str_replace( array ("\r", "\r\n", "\n"),"", $string);
+				//$string = $data[product_id] . $data[options] . "/";
+
+				$qty = $data[qty] - $this->get_part_cancel( $data[seq] );
+				$string .= $qty."개:". $product_name. " - ".  $product_options;
+				break;
+
+			case "option_qty":
+				class_D::get_product_name_option2( $data[product_id], &$product_name, &$product_option );	
+
+				// $product_options = $product_option ? $product_option : $data[options];
+				
+				$product_options = "[" . $product_option . "]";
+				$product_options = str_replace( array ("\r", "\r\n", "\n"),"", $product_options);
+
+				$string = str_replace( array ("\r", "\r\n", "\n"),"", $string);
+				$qty = $data[qty] - $this->get_part_cancel( $data[seq] );
+				$string .= $product_options . " X $qty"; 
+				break;
+
+			case "product_option_qty":
+
+				if ( $_SESSION[STOCK_MANAGE_USE] )
+					class_D::get_product_name_option2( $data[product_id], &$product_name, &$product_option );	
+				else
+				{
+					$product_name = $this->get_product_name( $data[product_id] );	
+					//echo "name->$product_name / $data[product_id] ////<br>";
+				}
+
+				$product_options = $product_option ? $product_option : $data[options];
+				$product_options = "[" . $product_options . "]";
+				$product_options = str_replace( array ("\r", "\r\n", "\n"),"", $product_options);
+
+				$string = str_replace( array ("\r", "\r\n", "\n"),"", $string);
+				//$string = $data[product_id] . $data[options] . "/";
+
+				$qty = $data[qty] - $this->get_part_cancel( $data[seq] );
+				$string .= $product_name. " - ".  $product_options . " X $qty"; 
+				break;
+
+
+			case "qty_product":
+				if ( $_SESSION[STOCK_MANAGE_USE] )
+				{
+					$product_name = "";
+					$product_option="";
+					class_D::get_product_name_option2( $data[product_id], &$product_name, &$product_option );	
+				}
+				else
+					$product_name = $this->get_product_name( $data[product_id] );	
+
+				if ( _DOMAIN_ == "ckcompany" )
+					$string .= "(" . $data[warehouse] . ") $data[product_id] ";
+
+				$qty = $data[qty] - $this->get_part_cancel( $data[seq] );
+				$string .= $qty . "개:". $product_name;
+				break;
+	
+			//===============================================
+			// option 관련 date: 2007.3.19
+			// 
+			case "options":
+				if ( $_SESSION[STOCK_MANAGE_USE] )
+				{
+					// date: 2007.5.28 - ozen은 옵션별 발주를 하지만 옵션별 발주가 아닌 상품들이 있다.
+					// 황대리 요청사항
+					if ( is_numeric( substr($data[product_id],0,1) ) )
+						$string = "-[" . $data[options] . "]";
+					else
+						$string = "-[" . class_D::get_product_option( $data[product_id] ) . "]";
+
+					if (_DOMAIN_ == "ckcompany")
+					{
+						$string = "-[" . class_D::get_product_option( $data[product_id] ) . "]-$data[options]";
+						$string = str_replace( array ("\r", "\r\n", "\n"),"", $string);
+					}
+					  
+				}
+				else
+				{
+					if ( $data[options] )
+						$string = "-[" . $data[options] . "]";
+				}
+				# $string = nl2br ( $string );
+				$string = str_replace( array ("\n","\r","\r\n","<br>"),"/", $string);
+				break;
+			case "product_option":
+				$string = "-[" . $data[options] . "]";
+				$string = str_replace( array ("\r", "\r\n", "\n"),"", $string);
+				$string = strip_tags ( $string );
+				break;
+
+
+			//===============================================
+			// option 관련 date: 2007.4.4
+			// 
+			case "option_only":
+				if ( $_SESSION[STOCK_MANAGE_USE] )
+					$string = "-" . class_D::get_product_option( $data[product_id] );
+				else
+					$string = $data[options];
+
+				$string = str_replace( array ("\r", "\r\n", "\n"),"", $string);
+				break;
+
+			//===============================================
+			// option 관련 date: 2007.6.18
+			// 주문서 실제 옵션 출력
+			case "real_option":
+				$string = "-" . $data[options];
+				$string = str_replace( array ("\r", "\r\n", "\n"),"", $string);
+				break;
+			//===============================================
+			// product_name 관련 date: 2007.3.19
+			// 
+			case "org_product_name":
+				$string = $data[product_name]; 	
+				break;
+			case "product_name":
+				$string = $this->get_product_name( $data[product_id] );	
+				break;
+			case "product_memo":
+				$string = str_replace( array ("\r", "\r\n", "\n"),"", $data[memo] );
+				break;
+			case "product_id":
+				$string = "(" . $data[product_id] . ")";
+				break;
+			case "product_id_only":
+				$string = $data[product_id];
+				break;
+			case "qty_only":
+				$qty = $data[qty] - $this->get_part_cancel( $data[seq] );
+				$string = $qty;
+				break;
+			case "qty":
+				$qty = $data[qty] - $this->get_part_cancel( $data[seq] );
+				$string = $qty . "개:";
+				break;
+			case "xqty":
+				$qty = $data[qty] - $this->get_part_cancel( $data[seq] );
+				$string = " X" . $qty;
+				break;
+			case "xqty2":
+				$qty = $data[qty] - $this->get_part_cancel( $data[seq] );
+				$string = " x" . $qty;
+				break;
+			case "pack":
+				$string = $data[pack] ? $data[pack] : $data[seq];
+				break;
+			// 판매처 
+			case "shop_name":
+				$string = class_C::get_shop_name( $data["shop_id"] );
+				break;
+			// 총 판매 금액 
+			case "total_price":
+				$string = $this->get_total_price( $data );
+				break;
+			//=================================================
+			// 우편 번호 관련
+			case "recv_zip_only":
+				$string = str_replace("-", "", $data[recv_zip] );
+				break;
+			// 일반 
+			default : 
+			    if ( _DOMAIN_ == "sevar" ) // test해야 함 - 3.10
+			       $string = str_replace("\/", "\|", $data[$key]);
+		            else
+			        $string = strip_tags($data[$key]);
+
+		}
+		return $string;
+	}
+
+
+/*		
+	//==============================================
+	//	
+	// 일반 macro 값이 있을 경우
+	//  date: 2007.3.19 - jk
+	//
+	if ( $macro )
+	{
+		$string = "";
+
+		if ( preg_match( "/[\[](.*)[\]]/", $macro, $matches ) )
+		{
+			$arr_macro = split( "\|\|", $matches[1] );
+
+			$i = 0;
+			while( $i < count( $arr_macro ) )
+			{
+				$macro = $key . "_" . $arr_macro[$i];
+				$string .= $this->get_data( $data, $macro );
+				$i++;
+			}
+		}
+
+		return "<td>" . $string . "</td>";
+	}
+*/
+  }	
+
+  function get_total_price( $data )
+  {
+	global $connect;
+	if ( $data[pack] )
+		$query = "select shop_price,qty from orders where pack='$data[pack]'";
+	else
+		$query = "select shop_price,qty from orders where seq='$data[seq]'";
+
+	$result = mysql_query ( $query, $connect );
+	$price=0;
+
+	while ( $data = mysql_fetch_array ( $result ) )
+	{
+	    $qty = $data[qty] - $this->get_part_cancel( $data[seq] );
+	    $price = $price + ($data[shop_price] * $qty);
+	}
+
+	return $price;	
+  }
+
+  //=================================================
+  // 
+  // 합포 data는 여기서 처리
+  // date: 2007.3.20 - jk.ryu
+  //
+  function get_pack_datas ( $pack, $arr_macro, $macro_case, $separator='', $max='' )
+  {
+	global $connect, $status;
+
+	/* ckcomopany 위한 코드 */
+	if ( 
+            _DOMAIN_ == "ckcompany" || 
+            _DOMAIN_ == "luxkiss" || 
+	    _DOMAIN_ == "yeowoowa"
+	 )
+	{
+		$query = "select orders.* from orders,products 
+			where orders.product_id = products.product_id 
+		          and pack='$pack' 
+			  and status in (1, 2,11) 
+			  and order_cs in ( 0, 5,7, 9, 11, 13 ) ";
+
+		if ( _DOMAIN_ == "ckcompany" )
+                    $query .= " order by orders.order_date, orders.warehouse, products.name ";
+		else
+                    $query .= " order by " . $this->m_download_config[sortinfo];
+	}
+	else
+	{
+		$query = "select * from orders where ";
+		$query .= " pack='$pack' 
+                        and status in (1,2,11) ";
+
+		if ( $status == 2 ) // 교환
+                   $query .= " and order_cs in ( 11,5,7,13,6,8 ) order by ";
+		else
+                   $query .= " and order_cs in ( 0, 5,7, 9, 11, 13 ) order by ";
+
+		if ( $this->m_download_config[sortinfo] )
+			$query .= $this->m_download_config[sortinfo];	
+		else
+			$query .= " product_name, options";
+	}
+
+	// date: 2007.9.10
+	// $query .= " order by matched_product_name";
+/*
+if ( _DOMAIN_ == "yeowoowa" )
+	echo $query;
+*/
+
+	// testdebug
+	//if ( $_SESSION[LOGIN_LEVEL] == 9 )
+	//    echo "$query";
+
+	$result = mysql_query ( $query, $connect );
+
+	///////////////////////////////
+	// 미송 여부 판단
+	// 2008.4.24
+	if ( !mysql_num_rows( $result ) )
+	{
+            $query = "select b.* 
+                        from notyet_deliv a, orders b
+                       where a.seq = b.seq
+                         and a.status=1
+                         and a.pack=$pack
+                         and b.order_cs not in (1,2,3,4,12)";
+
+	    $result = mysql_query ( $query, $connect );
+	}
+
+
+
+	$string = "";
+        $_cnt  = 0;
+        $_cnt1 = 0;	// 실제 출력된 개수
+	while ( $data = mysql_fetch_array ( $result ) )
+	{
+	    $_cnt++;	
+            if ( $this->min_product )
+	        if ( $_cnt < $this->min_product ) // 2007.7.11 - jkryu 추가 3-5 일 경우 3번째 데이터 부터 5번째 data가 출력되야 함
+		    continue;
+
+	    // =============================================
+	    // 개수는 max_product의 개수보다 클 수 없음
+	    // date: 2007.6.20 - jk
+	    if ( $this->max_product )
+		if ( $_cnt1 >= $this->max_product ) // >= => = 로 수정 2007.7.11 - jkryu
+		    continue;
+
+		switch ( $macro_case )
+		{
+		
+			//===============================================
+			//
+			// case1 . 여러개의 셀에 정보를 넣을 경우
+			// ex) <packs>[product_name][options][qty]
+			//   date: 2007.3.20 - jk
+			//
+			case 1:
+				if ( $data[packed] )
+                                {
+                                        //============================================
+                                        // 묶음 상품인 경우
+                                        // date: 2007.5.15 - jk
+                                        $arr_packed = split(",", $data[pack_list] );
+                                        $j=0;
+
+					// 하나의 item이 하나의 셀에 들어가야 하는 경우
+					$separator = "cells";
+                                        while ( $j < count( $arr_packed ) )
+                                        {
+                                                $string .= $this->get_packed_list ( $arr_packed[$j], $arr_macro, $data, $separator );
+                                                $j++;
+                                        }
+					$_cnt1 = $_cnt1 + $j;	// 실 출력 개수
+                                }
+                                else
+				{
+					// 여러개의 경우 cell이 다름
+					for ($i=0; $i< count($arr_macro); $i++) 
+					{
+						// 여러개의 cell에 등록됨
+						$string .= "<td  style='mso-number-format:\@' >";
+
+						$string .= $this->get_data ( $data, $arr_macro[$i] );
+						$string .= "</td>";
+					}
+
+					$_cnt1 = $_cnt1 + 1;	// 실 출력 개수
+				}
+
+				break;	
+
+			//==================================================
+			// 
+			// case 2. 하나의 cell에 모든 정보가 다 들어갈 경우
+			// date: 2007.3.20
+			// ex) <packs>[구분자:|,길이:30||product_name||options|]
+			// confirm start : 2007.3.26 -jk
+			//
+			case 2:
+				if ( $data[packed] )
+				{
+		
+					//============================================
+					// 묶음 상품인 경우
+					// date: 2007.5.15 - jk
+					$arr_packed = split(",", $data[pack_list] );
+                                        $j=0;
+                                        while ( $j < count( $arr_packed ) )
+                                        {
+                                                $string .= $this->get_packed_list ( $arr_packed[$j], $arr_macro, $data, $separator );
+                                                $j++;
+                                        }
+
+					// testdebug
+					//if ( $_SESSION[LOGIN_LEVEL] == 9 )
+					//	$string .= "/ $data[pack_list]  /";
+
+					$_cnt1 = $_cnt1 + $j;	// 실 출력 개수
+				}
+				else
+				{
+					//============================================
+					// 묶음 상품이 아닌경우
+					// date: 2007.5.15 - jk
+					$i=1;
+					$temp = "";
+
+					while( $i < count( $arr_macro ) )
+					{
+						// echo $arr_macro[$i] . "<br>";
+						$temp .= $this->get_data( $data, $arr_macro[$i] );
+						$i++;
+					}
+					$_cnt1 = $_cnt1 + 1;	// 실 출력 개수
+
+					//=================================================
+					//
+					// separator가 있을 경우 2007.3.20 - jk.ryu
+					//
+					// zoc76이 요청한 부분 - 2007.11.15
+					if ( $separator == "dongbu" )
+					{
+	    					$qty = $data[qty] - $this->get_part_cancel( $data[seq] );
+						$temp .= "`" . $qty . "`$";
+					}
+
+					if ( $separator )
+						$string .= $this->pack_string( $temp, $separator, $max ); 
+					else
+						$string .= $temp . "|"; 
+					}
+
+				break;
+
+			//======================================
+			//
+			// case 3. 하나의 셀마다 상품 data 출력
+			// date: 2007.3.20 - jk.ryu
+			// 묶음 상품의 경우 처리 방안
+			//   date: 2007.4.16 - jk.ryu
+			//
+			case 3:
+				if ( $data[packed] )
+				{
+					$arr_packed = split(",", $data[pack_list] );
+					$j=0;
+					while ( $j < count( $arr_packed ) )
+					{
+
+						$string .= "<td  style='mso-number-format:\@' >";
+                                                $string .= $this->get_packed_list ( $arr_packed[$j], $arr_macro, $data );
+						$string .= "</td>";	
+						$j++;
+					}
+					$_cnt1 = $_cnt1 + $j;	// 실 출력 개수
+				}
+				// 
+				// 묶음 상품이 아닐경우
+				//
+				else
+				{
+					$string .= "<td  style='mso-number-format:\@'>";
+					$i=0;
+					while( $i < count( $arr_macro ) )
+					{
+						// $string .= $arr_macro[$i] . "/";
+						$string .= $this->get_data( $data, $arr_macro[$i] );
+						$i++;
+					}
+					$string .= "</td>";
+					$_cnt1 = $_cnt1 + 1;	// 실 출력 개수
+				}
+				break;
+		}
+		$i++;
+	}
+
+        //======================================
+        // max_product만큼 공백 출력
+	// date: 2007.6.20 - jk
+	if ( $_cnt1 < $this->max_product )
+	{
+	    for ( $i=$_cnt1 + 1; $i <= $this->max_product; $i++)
+	    {
+	        $string .= "<td  style='mso-number-format:\@'> ";
+                $string .= "</td>";
+	    }
+	}
+
+	if ( $macro_case == 2 )
+		return "<td  style='mso-number-format:\@'>$string</td>";
+	else
+		return $string;
+  }
+
+  //====================================================
+  //  
+  // 묶음 상품의 경우 처리
+  // date: 2007.4.16 - jk.ryu
+  // 아무 로직도 없네.. date: 2007.5.15 - jk
+  //
+  function get_packed_list ( $product_id, $arr_macro, $data, $separator="|", $max=200 )
+  {
+	// product_id만 return할 경우 boxon 사용할 경우
+	if ( $arr_macro[0] == "product_id_only" )
+	{
+		if ( _DOMAIN_ == "adong" and $product_id == "01864" )
+			return;
+		else
+        		return $product_id;	
+	}
+
+
+	// boxon 사용하지 않을 경우
+	global $connect;
+	$query = "select name, options,product_id from products where product_id='$product_id'";
+
+	$result = mysql_query ( $query, $connect );
+	$data_p = mysql_fetch_array ( $result );
+ 	
+	$data["product_name"] = $data_p["name"];
+	$data["options"]      = $data_p["options"];
+	$data["product_id"]   = $product_id;
+
+	if ( _DOMAIN_ == "piglet177" )
+		$temp .= $query;
+
+	$i=0;
+	// separator가 cell인 경우는 case 1. 하나의 셀에 각각의 정보가 들어가는 경우
+	while( $i < count( $arr_macro ) )
+	{
+		// 선택된 값이 없을경우 다음 주문으로 pass
+		if ( !$arr_macro[$i] ) continue;
+
+		if ( $separator == "cells" ) $temp .= "<td  style='mso-number-format:\@'>";
+		$temp .= $this->get_data( $data, $arr_macro[$i] );
+
+
+		if ( $separator == "cells" ) $temp .= "</td>";
+		$i++;
+	}
+        ////////////////////////////////////////////////////////
+	// separator가 없으면 pack_string을 타지 않음
+	if ( $separator != "cells" and $separator and $max ) 
+		$string .= $this->pack_string( $temp, $separator, $max );
+	else
+		$string = $temp;
+	return $string;
+  }
+
+  ///////////////////////////////////////////////
+  // 정해진 개수로 string 자름
+  function pack_string( $temp, $seperator = "|", $max_length = 44, $max_row = 5 )
+   {
+      $arr_chars = array("=","\r", "\n", "\r\n","\t", ",", ".", chr(13),"\"","'" );
+      $temp = str_replace( $arr_chars, ".", $temp );
+
+      // 무조건 50자 이하로 나누기
+      $length = strlen ( $temp );
+        
+      $str = $temp;
+
+	//==================================
+	// zoc76 요청 사항 2007.11.15 - jk
+	if( $seperator == "dongbu" )
+		$seperator = "";
+
+       if ( $length  >= $max_length )
+       {
+            $pos = 0;
+            $str = "";
+            $j = 0;
+           
+            //////////////////////////////////////////////// 
+            // 정해진 max_length마다 seperator를 입력
+            while ( $pos < $length )
+            {
+               // 정해진 개수만큼 돌고 끝냄
+               if ( $max_row )
+                   if ( $j == $max_row ) break;
+
+               $end_pos = $pos + $max_length; // max가 50
+
+               if ( $end_pos > $length )
+                  $end_pos = $length;
+             
+               for($i=$pos; $i<$end_pos; $i++) if(ord($temp[$i])>127) $i++;
+
+               $left = $i - $pos;
+
+               //$str .= $j . "/" .  $left;
+               $str .= substr( $temp, $pos, $left);
+
+               //$pos = $end_pos + 1;
+               $pos = $pos + $left;
+ 
+               // if ( $end_pos != $length ) // 줄 바꿈 표시
+               if ( $end_pos < $length ) // 줄 바꿈 표시
+		{
+            	   //$str .= "($pos)" .  $seperator;
+            	   $str .= $seperator;
+		}
+	       else
+		{
+            	   // $str .= "[$pos/$length]" .  $seperator;
+            	   $str .= $seperator;
+		}
+
+               $j++;
+            }
+        }
+	else
+		$str .= $seperator;
+
+	// 공백 매워 줌
+	/*
+        if ( $max_row )
+        {
+            if ( $max_row != $j )
+                for ( $count = $j; $count < $max_row; $count++ )
+                    $str .= " ". $seperator;
+            else
+       	        $str .= " ". $seperator;
+        }
+        else
+       	    $str .= " ". $seperator;
+	*/
+
+        return $str; 
+   }
+ 
+
+}
+
+?>

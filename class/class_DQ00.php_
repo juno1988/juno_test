@@ -1,0 +1,398 @@
+<?
+require_once "class_top.php";
+require_once "class_D.php";
+require_once "class_C.php";
+require_once "class_E.php";
+
+////////////////////////////////
+// class name: class_DQ00
+//
+
+class class_DQ00 extends class_top 
+{
+
+   function DQ01()
+   {
+      global $template, $start_date, $keyword, $search_type;
+      global $order_status;
+
+      $master_code = substr( $template, 0,1);
+      include "template/" . $master_code ."/" . $template . ".htm";
+   }
+
+   function DQ02()
+   {
+      global $template, $start_date, $keyword, $search_type;
+      global $order_status;
+
+      $master_code = substr( $template, 0,1);
+      include "template/" . $master_code ."/" . $template . ".htm";
+   }
+
+
+   function DQ00()
+   {
+      global $template, $start_date, $keyword, $search_type;
+      global $order_status;
+      
+      $line_per_page = _line_per_page;
+
+      $link_url = "?" . $this->build_link_url();
+
+
+      $start_date = $start_date ? $start_date : Date("Y-m-d",strtotime("-3 days"));
+      $end_date = $_REQUEST["end_date"];
+      
+      if ( $_SESSION[LOGIN_LEVEL] == 0 )  // 공급체
+         $supply_code = $_SESSION[LOGIN_CODE];
+      else // 내부 사용자
+         $supply_code = _MASTER_CODE;
+
+       if ( $_REQUEST["page"] )
+           $result = $this->get_order_list( &$total_rows ); ; 
+
+      $master_code = substr( $template, 0,1);
+      include "template/" . $master_code ."/" . $template . ".htm";
+   }
+
+   // 정리 시작
+   function arrange_start()
+   {
+      global $template, $start_date, $keyword, $search_type;
+      global $order_status;
+      global $connect;
+	global $link_url;
+
+echo "<script>show_waiting()</script>";
+flush();
+
+      //------------------------------------
+      //
+      // 정리해야할 text를 받아온다.
+      //
+      $query = "select str_from, str_to from check_text";
+      $result = mysql_query ( $query, $connect );
+
+      $trans = array ();
+      while ( $data = mysql_fetch_array ( $result )) 
+      {
+        $trans[$data[str_from]] = $data[str_to];
+      }
+
+      //-----------------------------------------------
+      //
+      // 전체 주문 정보를 받아 온다.
+      //
+      $limit_option = 1;	// 전체 data받아온다는 옵션
+      $result = $this->get_order_list( &$total_rows, $limit_option ); ; 
+      // option과 메모를 받아 온다.
+      $arr_item = array();
+
+      // debug를 하기 위해 작업 소유자 정보를 받아 온다
+      $owner = $_SESSION[LOGIN_ID];
+
+      $commit_rows = 0;
+      $i=0;
+      while ( $data = mysql_fetch_array ( $result )) 
+      {
+        // 메모나 옵션에 값이 있을 경우만 변경을 한다.
+        if ( $data[memo] or $data[options] )
+        {
+          // 변경을 수행하는 작업 중
+          $options = addslashes( strtr( $data[options], $trans ) );
+          // $memo    = addslashes( strtr( $data[memo], $trans ) );
+          $seq     = $data[seq];
+
+          //$query = "update orders set options = '$options', memo = '$memo' where seq=$seq";
+          $query = "update orders set options = '$options' where seq=$seq";
+          mysql_query ( $query, $connect );
+	  $commit_rows = $commit_rows + mysql_affected_rows ();	
+
+          // transaction 남김 
+          // 2006.11.15 - jk
+          // debug( "[seq3: $seq] $owner 메모=> " . addslashes ( $memo ) . "/ 옵션=> $data[options] " . addslashes ( $options ));
+	$this->show_txt( $i++ ."번째 작업 중" );
+	flush();
+          // option, memo초기화
+          $options = "";
+          $memo = "";
+          $data[memo] = "";
+          $data[options] = "";
+
+        }
+      } 
+
+      // nak21은 공백을 삭제 함
+      if ( 
+	_DOMAIN_ == "nak21" or 
+	_DOMAIN_ == "bsh2839" or 
+	_DOMAIN_ == "orange" or 
+	_DOMAIN_ == "shala" or 
+	_DOMAIN_ == "ezadmin" 
+      )
+      {
+          $query = "update orders set options = replace(options, ' ', '') where status=1";	
+          mysql_query ( $query, $connect );
+      }      
+ 
+echo "<script>hide_waiting();</script>";
+echo "<script>alert('" . $commit_rows . "건 변경') </script>";
+flush();
+
+	$this->redirect( base64_decode( $link_url ) );
+
+      //$line_per_page = _line_per_page;
+      //$result = $this->get_order_list( &$total_rows ); ; 
+      // $master_code = substr( $template, 0,1);
+      // include "template/" . $master_code ."/" . $template . ".htm";
+   }
+
+   // strFrom, strTo 추가
+   function add_string()
+   {
+     global $template, $action, $seq, $str_from, $str_to, $connect;
+
+     $str_from= iconv("UTF-8", "CP949", $str_from);
+     $str_to  = iconv("UTF-8", "CP949", $str_to);
+
+     $query = "insert into check_text set str_from='$str_from', str_to='$str_to', reg_date=Now()";
+     mysql_query ( $query, $connect );
+
+     $this->string_list(); 
+   }
+
+   function querying()
+   {
+     global $str_input;
+
+     $str_input = iconv("UTF-8", "CP949", $str_input);
+     $this->string_list( $str_input ); 
+   }
+
+   function del()
+   {
+     global $connect, $seq;
+
+     $query = "delete from check_text where seq=$seq";
+     mysql_query ( $query, $connect );
+
+     $this->string_list();
+   }
+
+
+   // list 출력
+   function string_list( $keyword = "" )
+   {
+     global $connect, $sort, $input_string;
+
+     if ( $input_string )
+       $keyword = $input_string;
+
+     $query = "select * from check_text";
+
+     if ( $keyword )
+       $query .= " where str_from like \"%$keyword%\" or str_to like \"%$keyword%\"";
+
+     $query .= " order by seq desc";
+     $result = mysql_query ( $query, $connect );
+
+echo "<table width=100% border=0 cellpadding=0 cellspacing=1 bgcolor=ccccc>
+  <tr>
+    <td width=40% class=header1>from</td>
+    <td width=40% class=header1>to</td>
+    <td width=15% class=header1>date</td>
+    <td width=5% class=header1>menu</td>
+  </tr>
+";
+     while ( $data = mysql_fetch_array ( $result ) )
+     {
+
+echo "
+  <tr bgcolor=ffffff>
+    <td height=20>&nbsp;" . htmlspecialchars($data[str_from]) . "</td>
+    <td>&nbsp;" . htmlspecialchars($data[str_to]) . "</td>
+    <td align=center>$data[reg_date]</td>
+    <td align=center><a href='javascript:del($data[seq])'><img src='http://scm.ezadmin.co.kr/images/btn_x2.gif'></a></td>
+  </tr>
+";
+     }
+   } 
+ 
+
+   function update_option()
+   {
+     global $template, $seq, $product_option, $connect;
+
+     $product_option = iconv("UTF-8", "CP949", $product_option);
+
+     $query = "update orders set options='$product_option' where seq=$seq";
+     mysql_query ( $query , $connect);
+
+     $owner = $_SESSION[LOGIN_ID];
+     // debug( "[seq1: $seq] $owner 옵션=> " . addslashes ( $options ));
+   }
+
+   function update_memo()
+   {
+     global $template, $seq, $memo, $connect;
+
+     $memo = iconv("UTF-8", "CP949", $memo);
+
+     $query = "update orders set memo='" . addslashes($memo) . "' where seq=$seq";
+     mysql_query ( $query, $connect );
+
+     $owner = $_SESSION[LOGIN_ID];
+     // debug( "[seq2: $seq] $owner 메모=> " . addslashes ( $memo ) );
+   }
+
+
+   ///////////////////////////////////////////////////////////
+   // limit_option 이 0 일 경우는 전체 출력 주로 download받을때 사용
+   // 검색 기준일이 주문일일 경우 : 
+   // 검색 기준일이 송장 입력일
+   function get_order_list( &$total_rows , $limit_option=0, $search_date='collect_date', $no_cancel=0)
+   {
+	global $connect, $start_date, $end_date, $pos_confirm, $trans_who, $transonly;
+        global $order_status, $search_type, $keyword;
+        $shop_id = $_REQUEST["shop_id"];        // 판매처
+
+	$line_per_page = _line_per_page;
+	$keyword = $_REQUEST["keyword"];
+	$page = $_REQUEST["page"];
+
+	//$start_date = $_REQUEST["start_date"] ? $_REQUEST["start_date"] : strftime('%Y-%m-%d', strtotime('now'));
+	//$end_date = $_REQUEST["end_date"] ? $_REQUEST["end_date"] : strftime('%Y-%m-%d', strtotime('now'));
+
+        if ( $_SESSION[LOGIN_LEVEL] )
+            $supply_code = $_REQUEST["supply_code"];// 공급처
+        else
+            $supply_code = $_SESSION["LOGIN_CODE"];// 공급처
+
+
+	// 속도가 느려 변경
+	//$query = "select a.*, b.name as supply_name, c.shop_name as shop_name ";
+	$query = "select a.*, supply_id supply_name, shop_id shop_name ";
+	$query_cnt = "select count(*) cnt ";
+
+/*
+	$options = " from orders a, userinfo b , shopinfo c 
+                    where a.order_id != '' 
+                      and a.supply_id = b.code
+                      and a.shop_id = c.shop_id ";
+*/
+
+	// 속도가 느려 join을 모두 삭제
+	// 
+	$options = " from orders a 
+                    where a.order_id != '' ";
+
+
+	/*
+	if ( $keyword )
+	  $options .= " and (a.order_id = '$keyword' or a.order_name = '$keyword' or a.product_name like '%$keyword%') ";
+	*/
+
+	if ($start_date)
+	  $options .= " and a." . $search_date . ">= '$start_date 00:00:00' ";
+	if ($end_date)
+	  $options .= " and a." . $search_date . "<= '$end_date 23:59:59' ";
+//echo $options;
+//exit;
+        ///////////////////////////////////////////
+        // shop_id 가 있는 경우
+        if ( $shop_id)
+           $options .= " and a.shop_id= '$shop_id'";
+
+        //////////////////////////////
+        // trans_who가 있는 경우
+        if ( $trans_who )
+           $options .= " and a.trans_who = '$trans_who'";
+
+	// not_trans
+	if ( $transonly )
+	   $options .= " and a.status = 1 ";
+
+        if ($keyword)
+        {
+          switch ( $search_type )
+          {
+              case 1: // 주문자
+                  $options .= "and a.order_name like '%${keyword}%'" ;
+                  break;
+              case 2: // 주문번호
+                  $options .= "and a.order_id = '${keyword}'" ;
+                  break;
+              case 3: // 상품명
+                  $options .= "and a.product_name like '%${keyword}%' " ;
+                  break;
+              case 4: // 전화번호
+                  $options .= "and (a.recv_tel like '%$keyword%' or a.recv_mobile like '%$keyword%') " ;
+                  break;
+              case 5: // 수령자
+                  $options .= "and (a.recv_name like '%$keyword%') " ;
+                  break;
+              case 6:  // 송장번호
+                  $options .= "and a.trans_no = '$keyword' ";
+                  break;
+              case 7: // 어드민 코드
+                  $options .= "and a.seq = '$keyword' ";
+            break;
+              case 8: // 주문자 전화
+                  $options .= "and (a.order_tel like '%$keyword%' or a.order_mobile like '%$keyword%') " ;
+                  break;
+              case 9: // 상품 코드 
+                  $options .= "and a.product_id = '$keyword' " ;
+                  break;
+          }
+        }
+//debug
+//if ( $_SESSION[LOGIN_LEVEL] == 9 )
+//echo $options;
+
+        //////////////////////////////////////////
+        // supply_code 가 있을 경우
+	if (_DOMAIN_ == "jyms") $options .= "";
+	else if (_DOMAIN_ == 'ecstorm') $options .= "";
+	else
+	{
+          if ( $supply_code )
+            $options .= " and a.supply_id = '$supply_code'";
+	}
+
+        ///////////////////////////////////////////
+        // status 가 있는 경우
+        // pos 확인 전
+	//------------------------------------------------
+	//
+	// CS 상태
+	// 0: 정상 , 11: 교환
+        $options .= "and a.order_cs in ( 0, 11 ) ";
+
+	//------------------------------------------------
+	//
+	// 주문 상태
+	// 상태가 1(정상) 일 경우 정상과 교환을 모두 출력 해야 함
+	if ( $order_status )
+	  $options .= "and a.status = '$order_status'";
+
+	$options .= " order by a.pack desc, a.product_id, a.options, a.memo ";
+
+        if ( !$limit_option )
+        {
+	   $starter = $page ? ($page-1) * $line_per_page : 0;
+	   $limit = " limit $starter, $line_per_page";
+        }
+
+	////////////////////////////////////////////////// 
+	// total count 가져오기
+	$list = mysql_fetch_array(mysql_query($query_cnt . $options, $connect));
+	$total_rows = $list[cnt];
+
+// echo $query . $options . $limit;
+
+	$result = mysql_query($query . $options . $limit, $connect);
+	return $result;
+    }
+
+
+}

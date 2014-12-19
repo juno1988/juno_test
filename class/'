@@ -1,0 +1,110 @@
+<?
+require_once "class_top.php";
+require_once "class_F.php";
+require_once "class_C.php";
+////////////////////////////////
+// class name: class_F200
+
+class class_F200 extends class_top {
+
+    ///////////////////////////////////////////
+    function F200()
+    {
+		global $connect;
+		global $template;
+
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+
+	//******************************************
+	// 검색
+    function search()
+    {
+		global $connect;
+		global $start_date, $end_date,$order_status,$shop_id,$query_type;
+		echo "f date: $start_date <br>";
+
+		$arr_data = array();
+
+		// 공급처 array
+		$arr_supply = $this->get_supply_name_arr();
+
+		// query orders
+		$query = "select b.* , sum(b.qty) sum_qty
+                   from orders a, order_products b
+					where a.seq = b.order_seq
+					  and $query_type >= '$start_date'	
+					  and $query_type <= '$end_date'
+		";
+
+		if ( $order_status == 1 )
+			$status = 1;
+		else if ( $order_status == 7 )	
+			$status = 7;
+		else if ( $order_status == 8 )	
+			$status = 8;
+		else if ( $order_status == 99 )	
+			$status = "1,7";
+
+		if ( $status )
+		    $query .= " and a.status in ( $status )";
+
+		if ( $shop_id )
+		    $query .= " and a.shop_id = $shop_id";
+
+		$query .= " and b.order_cs not in (1,2,3,4) 
+                  group by b.product_id";
+
+		$result = mysql_query( $query, $connect );
+
+		$arr_data = array();
+		$i = 1;
+		while ( $data = mysql_fetch_array( $result ) )
+		{
+			$arr_data[] = array( 
+					product_id   => $data[product_id] 
+					,supply_name => $arr_supply[$data[supply_id]]
+					,qty         => $arr_supply[$data[sum_qty]]
+			);
+		
+			if ( $i%10 == 0 )
+			    $this->show_txt( $i++ );
+		}
+
+		// 상품명, 원가, 공급처
+		$query = "select a.*, b.* 
+					from order_products a, products b
+				   where a.product_id = b.product_id
+					 and a";
+
+		
+        include "template/F/F200.htm";
+    }
+
+
+    ///////////////////////////////////////////
+    // F200 -> calc
+    function calc()
+    {   
+        global $connect;
+        global $template;
+        
+        $master_code = substr( $template, 0,1); 
+        include "template/" . $master_code ."/" . $template . "_calc.php";
+        
+        exit;
+    }
+
+    ///////////////////////////////////////////
+    function F201()
+    {
+	global $connect;
+	global $template;
+
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+}
+
+?>

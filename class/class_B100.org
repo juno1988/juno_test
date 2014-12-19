@@ -1,0 +1,351 @@
+<?
+require_once "class_top.php";
+require_once "class_B.php";
+require_once "class_C.php";
+require_once "class_ui.php";
+
+////////////////////////////////
+// class name: class_B100
+//
+
+class class_B100 extends class_top {
+
+    // shopinfo의 설정내용을 가져온다.
+    // 
+    function get_shop_info( $shop_id )
+    {
+        global $connect;
+        $query = "select * from shopinfo where shop_id='$shop_id'";
+        $result = mysql_query($query, $connect );
+        $data   = mysql_fetch_assoc( $result );
+    }
+
+    ///////////////////////////////////////////
+    // shop들의 list출력
+
+    function get_groupname( $group_id )
+    {
+                global $connect;
+                $query = "select name from shop_group where group_id='$group_id'";
+                $result = mysql_query( $query, $connect );
+                $data   = mysql_fetch_array( $result );
+                return $data[name];
+    }
+
+    // group 등록
+    function reg_group()
+    {
+
+                global $connect, $name;
+        // $name = iconv('utf-8', 'cp949', $name );
+                $query = "insert shop_group set name='$name'";
+                mysql_query( $query, $connect);
+
+                Header("Content-Type:plain/text;charset=utf-8");
+                echo "등록 $query";
+    }
+
+    // 그룹 정보 query
+    function group_query()
+    {
+                global $connect, $name;
+                $query = "select * from shop_group";
+                $result = mysql_query ($query, $connect );
+
+                $val = array();
+                $val['list'] = array();
+
+                while ( $data = mysql_fetch_array( $result ) )
+                {
+                    $val['list'][] = array( group_id => $data[group_id], 
+                                  name       => $data[name], 
+                                  crdate     => $data[crdate] );
+                }
+                echo json_encode( $val );
+    }
+
+    // 그룹 삭제
+    function del_group()
+    {
+        global $connect, $group_id;
+        $query = "delete from shop_group where group_id=$group_id";
+        mysql_query( $query, $connect );
+
+        Header("Content-Type:plain/text;charset=utf-8");
+        echo "삭제";
+    }
+
+    function B100()
+    {
+        global $connect;
+        global $template, $line_per_page, $group_id;
+
+        $curr_page = $_GET[page];
+
+        $sql = "select count(*) cnt from shopinfo";
+        if ( $group_id )
+            $sql .= " where group_id=$group_id";
+        $total = mysql_fetch_array(mysql_query($sql, $connect));
+        $total_rows = $total[cnt];
+
+        $line_per_page = 15;
+        $link_url = "?template=B100&";
+
+        $curr_page = $_REQUEST["page"];
+        $starter = $curr_page ? ($curr_page - 1) * $line_per_page : 0;
+        
+        $sql = "select * from shopinfo ";
+
+        if ( $group_id )
+            $sql .= " where group_id=$group_id";
+
+        $sql .= " order by shop_id ";
+
+        $sql .= " limit $starter, $line_per_page";
+        $result = mysql_query($sql, $connect);
+
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+
+
+    ///////////////////////////////////////////
+    // B100 -> delte_shop
+    // jk modify
+    // 
+    function delete()
+    {
+            global $connect,$shop_id;
+            $sys_connect = sys_db_connect2();
+   
+            $sql = "delete from shopinfo where shop_id  = '$shop_id'";
+            mysql_query($sql, $connect) or die(mysql_error());
+    
+            /////////////////////////////////////////
+            // TRANS DB UPDATE (sy.hwang 2005.12.16)
+            $sql = "delete from  ez_trans_shop
+                     where userid = '"._DOMAIN_."'
+                       and shop_id = '$shop_id'";
+            mysql_query($sql, $sys_connect) or die(mysql_error());
+            /////////////////////////////////////////
+    
+            // 매칭 정보도 같이 지워야 함
+            $query = "delete from code_match where shop_id='$shop_id'";
+            mysql_query($query, $connect) or die(mysql_error());
+    
+            echo "<script>document.location.href = '?template=B100';</script>";
+            exit;
+    }
+
+    /////////////////////////////////////////////
+    // 판매처 등록 수정
+    // 2008.10.9 - jk
+    // 5번 서버도 로긴해서 작업 해야 함.
+    function reg_shop()
+    {
+        global $connect, $userid, $passwd, $shop_id, $shop_name, $admin_url, $url, $promotion_id, $group_id;
+        $sys_connect = sys_db_connect2(); // 6번 서버에 로긴..
+        $sys_connect_old = sys_db_connect(); // 5번 서버에 로긴..
+
+        $link_url = "?" .  $this->build_link_url();
+
+        $query = "insert shopinfo set 
+                         shop_name    = '$shop_name', 
+                         userid       = '$userid', 
+                         passwd       = '$passwd', 
+                         admin_url    = '$admin_url', 
+                         url          = '$url',
+                         promotion_id = '$promotion_id',
+                         group_id     = '$group_id',
+                         shop_id      = '$shop_id'";
+        mysql_query ( $query , $connect);
+        
+        /////////////////////////////////////////
+        // TRANS DB UPDATE (sy.hwang 2005.12.16)
+        $sql = "insert into ez_trans_shop set
+                            userid    = '"._DOMAIN_."',
+                            shop_id   = '$shop_id',
+                            shop_name = '" . iconv('utf-8', 'cp949', $shop_name) . "',
+                            login_id  = '$userid',
+                            login_pwd = '$passwd'";
+        mysql_query($sql, $sys_connect) or die(mysql_error());
+        mysql_query($sql, $sys_connect_old) or die(mysql_error());
+        
+        /////////////////////////////////////////
+        
+        /////////////////////////////////////////
+        // 발주 헤더 복사
+        $sql = "select * from sys_shopheader where shop_id = $shop_id % 100 ";
+        $result = mysql_query( $sql, $sys_connect );
+        while( $data = mysql_fetch_assoc($result) )
+        {
+            $query = "insert shopheader
+                         set shop_id     = $shop_id,
+                             field_id    = '$data[field_id]',
+                             field_name  = '$data[field_name]',
+                             shop_header = '$data[shop_header]',
+                             abs         = $data[abs]";
+            mysql_query( $query, $connect );
+        }
+        /////////////////////////////////////////
+        
+        /////////////////////////////////////////
+        // 배송비 키워드 설정 복사
+        $sql = "select * from sys_shop_transkey where shop_id = $shop_id % 100 ";
+        $result = mysql_query( $sql, $sys_connect );
+        while( $data = mysql_fetch_assoc($result) )
+        {
+            $query = "insert shop_transkey
+                         set shop_id  = $shop_id,
+                             space    = $data[space],
+                             keyword  = '$data[keyword]',
+                             transwho = $data[transwho]";
+            mysql_query( $query, $connect );
+        }
+        /////////////////////////////////////////
+                  
+        /////////////////////////////////////////
+        // 정산 룰 복사
+        $sql = "select * from sys_stat_rule where shop_code = $shop_id % 100 ";
+        $result = mysql_query( $sql, $sys_connect );
+        while( $data = mysql_fetch_assoc($result) )
+        {
+            $query = "insert shop_stat_rule
+                         set shop_code        = $shop_id,
+                             amount           = '$data[amount]',
+                             supply_price     = '$data[supply_price]',
+                             prepay_trans     = '$data[prepay_trans]',
+                             user_trans_price = '$data[user_trans_price]'";
+            mysql_query( $query, $connect );
+        }
+        /////////////////////////////////////////
+
+        $this->redirect( $link_url );
+        exit;
+    }
+
+
+    /////////////////////////////////////////////
+    // promotion_id
+    function modify()
+    {
+        global $connect, $userid, $passwd, $shop_id, $shop_name, $admin_url, $url, $promotion_id, $group_id, $auth_code;
+        $sys_connect = sys_db_connect2();
+
+        $link_url = "?" .  $this->build_link_url();
+
+        $query = "update shopinfo set 
+                         shop_name    = '$shop_name', 
+                         userid       ='$userid', 
+                         passwd       ='$passwd', 
+                         admin_url    ='$admin_url', 
+                         url          ='$url',
+                         promotion_id ='$promotion_id',
+                         group_id     ='$group_id',
+                         auth_code    ='$auth_code'
+                   where shop_id='$shop_id'";
+        mysql_query ( $query , $connect);
+
+        /////////////////////////////////////////
+        // TRANS DB UPDATE (sy.hwang 2005.12.16)
+        $sql = "select count(*) cnt from ez_trans_shop where userid = '"._DOMAIN_."' and shop_id = '$shop_id'";
+        $list = mysql_fetch_array(mysql_query($sql, $sys_connect));
+        
+        if ($list[cnt] > 0)
+        {
+          $sql = "update ez_trans_shop set
+                  shop_name    = '" . iconv('utf-8','cp949',$shop_name) . "',
+                  login_id     = '$userid',
+                  login_pwd    = '$passwd',
+                  auth_code    = '$auth_code',
+                  code1        = 'http:\/\/$url'
+                 where userid  = '"._DOMAIN_."'
+                   and shop_id = '$shop_id'";
+        }
+        else
+        {
+          $sql = "insert into ez_trans_shop set
+                  userid    = '"._DOMAIN_."',
+                  shop_id   = '$shop_id',
+                  shop_name = '" . iconv('utf-8','cp949',$shop_name) . "',
+                  login_id  = '$userid',
+                  code1     = 'http:\/\/$url',
+                  auth_code = '$auth_code',
+                  login_pwd = '$passwd'";
+        }
+        
+        mysql_query($sql, $sys_connect) or die(mysql_error());
+        /////////////////////////////////////////
+        
+        $this->redirect( $link_url );
+        exit;
+    }
+
+    ///////////////////////////////////////////
+    // B101
+    function B101()
+    {
+        global $connect;
+        global $template;
+
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+
+
+
+    ///////////////////////////////////////////
+    // B102
+    function B102()
+    {
+        global $connect;
+        global $template;
+
+        $shop_id = $_GET[shop_id];
+
+        $sql = "select * from shopinfo where shop_id = '$shop_id'";
+        $result = mysql_query($sql, $connect) or die(mysql_error());
+        $list = mysql_fetch_array($result);
+
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+
+    ///////////////////////////////////////////
+    // B103
+    function B103()
+    {
+        global $connect;
+        global $template;
+
+        $shop_id = $_GET[shop_id];
+
+        $sql = "select * from shopinfo where shop_id = '$shop_id'";
+        $result = mysql_query($sql, $connect) or die(mysql_error());
+        $list = mysql_fetch_array($result);
+
+        $promotion_id = $list[promotion_id];
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+
+    ///////////////////////////////////////////
+    function B104()
+    {
+        global $connect;
+        global $template;
+
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+
+    function B105()
+    {
+        global $template;
+
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+}
+
+?>

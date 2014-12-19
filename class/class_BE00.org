@@ -1,0 +1,147 @@
+<?
+require_once "class_top.php";
+require_once "class_A.php";
+require_once "class_file.php";
+
+////////////////////////////////
+// class name: class_BE00
+//
+
+class class_BE00 extends class_top {
+    ///////////////////////////////////////////
+    // BE00
+
+    function BE01()
+    {
+	global $connect;
+	global $template, $line_per_page;
+
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+
+    function tt( $data_array )
+    {
+	// print_r ( $data_array );
+	echo "data:  $data_array[0] / $data_array[1] / $data_array[2] <br>";
+    }
+
+    function upload()
+    {
+	global $top_url, $connect, $_file;
+
+	$obj = new class_file();
+        $obj->upload_ref( $this, "tt" );
+
+
+        // $obj->upload_ref();
+
+    //    $arr_result = $obj->upload();
+
+exit;
+	foreach ( $arr_result as $row )
+	{
+	    $rows++;
+	    if ( $rows == 1 ) continue;
+ 
+	    $infos['collect_date'] = $row[0]; // A
+	    $infos['trans_no']     = $row[1];
+	    $infos['recv_name']    = $row[2];
+	    $infos['product_name'] = $row[3]; // D
+	    $infos['recv_zip']     = $row[4];
+
+	    $infos['recv_address'] = $row[5] . $row[6]; // F,G
+	    $infos['recv_tel']     = $row[7];
+	    $infos['recv_mobile']  = $row[8];
+	    $infos['qty']          = $row[9]; // J
+	    $infos['trans_who']    = $row[10]; // K
+	    $infos['product_id']   = $row[11]; // K
+	    $infos['order_id']     = $row[12]; // K
+
+	    // $this->insert_info( $infos );
+	    ///////////////////////////////
+	    // sync product 
+	    $str = "${rows} / ${total_rows}번째 작업중입니다.";
+	    echo "<script>show_txt('$str');</script>";
+	    flush();
+	}
+
+	$this->hide_wait();
+	$this->jsAlert ( "변경: $rows개의 작업 완료" );
+	// $this->redirect ("?template=BE01" );
+	exit;
+    }
+
+    //
+    function insert_info( $infos )
+    {
+	global $connect;
+
+	$query = "insert into orders set status=8, trans_date='2009-2-1', trans_date_pos='2009-2-1', ";
+
+	$i = 0;
+	foreach ( $infos as $key=>$value )
+	{
+	    $i++;
+	    $query .= $key . "=\"". htmlspecialchars(addslashes($value)) . "\"";
+	    if ( count($infos) != $i )
+	        $query .= ",";
+	}
+
+	echo "<br>----<br>";
+	echo $query;
+	echo "<br>----<br>";
+
+	mysql_query( $query, $connect ) or die( mysql_error() );
+    }
+
+    ///////////////////////////////////////////
+    // BE00
+
+    function BE00()
+    {
+	global $connect;
+	global $template, $line_per_page;
+        $transaction = $this->begin("주문삭제 page open");	// 2009.1.19
+
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+
+    function delete()
+    {
+	global $connect;
+	global $template;
+
+	// 2009.1.19 확인 - 이전에 있음
+        $transaction = $this->begin("주문삭제 / $shop_id / $collect_date");
+
+	$collect_date = $_REQUEST[collect_date];	
+	$shop_id = $_REQUEST[shop_id];
+
+	$sql = "delete from orders where collect_date = '$collect_date' and shop_id = '$shop_id'";
+
+	mysql_query($sql, $connect) or die(mysql_error());
+
+		$this->redirect("?template=BE00&act=query&start_date=$collect_date");
+        $master_code = substr( $template, 0,1);
+        include "template/" . $master_code ."/" . $template . ".htm";
+    }
+
+    function deletetrans()
+    {
+	    global $connect;
+	    global $template;
+
+	    $collect_date = $_REQUEST[collect_date];	
+	    $shop_id = $_REQUEST[shop_id];
+
+	    $sql = "update orders set trans_no = NULL, trans_corp = NULL, trans_date = NULL, status = '1' 
+                 where collect_date = '$collect_date' and shop_id = '$shop_id'";
+
+	    mysql_query($sql, $connect) or die(mysql_error());
+		$this->redirect("?template=BE00&act=query&start_date=$collect_date");
+    }
+}
+
+?>
